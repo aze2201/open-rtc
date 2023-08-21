@@ -1,0 +1,22 @@
+from flask import Flask, g, jsonify, request, redirect, render_template
+
+
+app = Flask(__name__)
+
+@app.route('/display', methods=['GET'])
+def display():
+    return render_template('display.html')
+
+
+@app.route('/scan', methods=['GET'])
+def scan_qr():
+    return render_template('scan.html')
+
+
+
+@app.route('/connect/<string:peer_id>')
+def page(peer_id):
+    return render_template('share-screen.html', PeerDesktopID=peer_id)
+
+if __name__ == '__main__':
+    app.run(debug=True)
