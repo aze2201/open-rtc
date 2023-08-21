@@ -1,5 +1,8 @@
 # Desktop share as Argument Reality
 
+Fariz Muradov
+
+
 ## Open https://open-rtc.com/display in your browser (better use firefox)
 You will QR code and click to share desktop via browser (you can choose any TAB or entire desktop)
 
