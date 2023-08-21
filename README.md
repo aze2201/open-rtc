@@ -6,7 +6,7 @@ You will QR code and click to share desktop via browser (you can choose any TAB 
 ## Scan QR code with your mobile
 Accept camera, gps and motion request
 
-## wola, you ca connected to desktop
+# !!!  wola, you ca connected to desktop !!!
 
 ## Here is Apache configuration
 
