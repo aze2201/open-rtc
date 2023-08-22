@@ -83,14 +83,14 @@
                      }
                 });
 				
-				
-				peer.on('connection', (conn) => {
-					connection = conn;
-					connection.on('data', (data) => {
-						console.log(data);
-						connection.send("Hello from Display");
-					});
-				});
+		// This is message exchange to adjust settings				
+		peer.on('connection', (conn) => {
+			connection = conn;
+			connection.on('data', (data) => {
+				console.log(data);
+				connection.send("Hello from Display");
+			});
+		});
                 
                 
 
