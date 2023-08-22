@@ -43,6 +43,23 @@
         #qrcode {
             margin-top: 20px;
         }
+		
+		#changeable-element {
+            width: 100px;
+            height: 100px;
+            background-color: lightblue;
+            transition: all 0.3s ease;
+        }
+
+        #size-controls {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #size-controls label {
+            margin-right: 10px;
+        }
     </style>
 
     <!-- Include PeerJS library -->
@@ -54,8 +71,27 @@
     <center><h2>This is your display ID. <br>Scan this QR code with your camera and connect to this display</h2></center>
     <button id="startButton">Start Sharing Display</button>
     <div id="qrcode"></div>
-    <video id="localVideo" autoplay muted></video>
-    <script>
+	
+	<br>
+	<div id="changeable-element"></div>
+    <div id="size-controls">
+        <label for="widthInput">Width:</label>
+        <input type="range" id="widthInput" min="50" max="300" value="100" step="1">
+        <div class="progress-bar">
+            <div id="widthProgress" class="progress"></div>
+        </div>
+    </div>
+    <div id="size-controls">
+        <label for="heightInput">Height:</label>
+        <input type="range" id="heightInput" min="50" max="300" value="100" step="1">
+        <div class="progress-bar">
+            <div id="heightProgress" class="progress"></div>
+        </div>
+    </div>
+	
+	
+	<script>
+		// This is communication
         const startButton = document.getElementById('startButton');
         const localVideo = document.getElementById('localVideo');
         let peer = null;
@@ -105,7 +141,6 @@
 
                 // Call the specified target PeerID
  
-
                 // Answer incoming calls automatically
                 peer.on('call', incomingCall => {
                     incomingCall.answer(stream);
@@ -123,8 +158,42 @@
                 console.error('Error starting screen sharing:', error);
             }
         });
+
+		// This is display
+        function changeSize() {
+            var width = document.getElementById("widthInput").value;
+            var height = document.getElementById("heightInput").value;
+			connection.send(width+","+height);
+
+            var element = document.getElementById("changeable-element");
+            element.style.width = width + "px";
+            element.style.height = height + "px";
+
+            var widthProgress = (width / 300) * 100; //   Adjust based on max width
+            var heightProgress = (height / 300) * 100; // Adjust based on max height
+
+            document.getElementById("widthProgress").style.width = widthProgress + "%";
+            document.getElementById("heightProgress").style.width = heightProgress + "%";
+        }
+    </script>
+	
+	<script>
+        const widthInput = document.getElementById("widthInput");
+        widthInput.addEventListener("input", () => {
+            changeSize();
+        });
+
+        const heightInput = document.getElementById("heightInput");
+        heightInput.addEventListener("input", () => {
+            changeSize();
+        });
+
+        changeSize(); // Initialize element size and progress bars
     </script>
 	
 	
+    <video id="localVideo" autoplay muted></video>
+    
 </body>
 </html>
+
