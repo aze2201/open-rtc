@@ -16,7 +16,7 @@
 
 <body style="margin: 0; overflow: hidden;">
     <a-scene>
-	       <a-box look-at="[gps-camera] "src="#their-video" position="0 1.6 -5" width="2" height="2" depth="2" >
+	       <a-box look-at="[gps-camera] "src="#their-video" position="0 1.6 -5" width="3" height="3" depth="2" >
 	       </a-box>
     </a-scene>
 
@@ -42,6 +42,16 @@
                 theirVideo.srcObject = stream;
 
                 const call = peer.call(remotePeerId, stream);
+				
+				connection = peer.connect(remotePeerId);
+				connection.on('open', () => {
+					console.log('Connected to remote peer.');
+					connection.on('data', (data) => {
+						console.log(data);
+					});
+					connection.send("I am connected to you and sending this message from mobile");
+				});
+
 
                 call.on('stream', (remoteStream) => {
                     // Display the remote stream in the their-video element
@@ -55,4 +65,3 @@
     </script>
 </body>
 </html>
-

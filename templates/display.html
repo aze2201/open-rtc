@@ -82,6 +82,15 @@
              qrcodeDiv.style.display = 'block';
                      }
                 });
+				
+				
+				peer.on('connection', (conn) => {
+					connection = conn;
+					connection.on('data', (data) => {
+						console.log(data);
+						connection.send("Hello from Display");
+					});
+				});
                 
                 
 
@@ -101,6 +110,8 @@
                 peer.on('call', incomingCall => {
                     incomingCall.answer(stream);
                 });
+				
+				
 
                 // Set up error handling
                 peer.on('error', error => {
@@ -113,5 +124,7 @@
             }
         });
     </script>
+	
+	
 </body>
 </html>
