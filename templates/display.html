@@ -73,17 +73,19 @@
     <div id="qrcode"></div>
 	
 	<br>
+	
+	<center><h2>Adjust your Argumented Object</h2></center>
 	<div id="changeable-element"></div>
     <div id="size-controls">
         <label for="widthInput">Width:</label>
-        <input type="range" id="widthInput" min="50" max="300" value="100" step="1">
+        <input type="range" id="widthInput" min="100" max="500" value="200" step="1">
         <div class="progress-bar">
             <div id="widthProgress" class="progress"></div>
         </div>
     </div>
     <div id="size-controls">
         <label for="heightInput">Height:</label>
-        <input type="range" id="heightInput" min="50" max="300" value="100" step="1">
+        <input type="range" id="heightInput" min="100" max="500" value="200" step="1">
         <div class="progress-bar">
             <div id="heightProgress" class="progress"></div>
         </div>
@@ -163,17 +165,19 @@
         function changeSize() {
             var width = document.getElementById("widthInput").value;
             var height = document.getElementById("heightInput").value;
-			connection.send(width+","+height);
+			
 
             var element = document.getElementById("changeable-element");
             element.style.width = width + "px";
             element.style.height = height + "px";
 
-            var widthProgress = (width / 300) * 100; //   Adjust based on max width
-            var heightProgress = (height / 300) * 100; // Adjust based on max height
+            var widthProgress = (width / 100 )  ; //   Adjust based on max width
+            var heightProgress = (height / 100 ) ; // Adjust based on max height
 
             document.getElementById("widthProgress").style.width = widthProgress + "%";
             document.getElementById("heightProgress").style.width = heightProgress + "%";
+			
+			connection.send(widthProgress+","+heightProgress);
         }
     </script>
 	
