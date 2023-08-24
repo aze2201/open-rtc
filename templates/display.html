@@ -91,6 +91,14 @@
         </div>
     </div>
 	
+	<div id="size-controls">
+        <label for="distanceInput">Distance:</label>
+        <input type="range" id="distanceInput" min="100" max="500" value="200" step="1">
+        <div class="progress-bar">
+            <div id="distanceProgress" class="progress"></div>
+        </div>
+    </div>
+	
 	
 	<script>
 		// This is communication
@@ -126,7 +134,7 @@
 			connection = conn;
 			connection.on('data', (data) => {
 				console.log(data);
-				connection.send("Hello from Display");
+				connection.send("2,2,2");
 			});
 		});
                 
@@ -147,8 +155,6 @@
                 peer.on('call', incomingCall => {
                     incomingCall.answer(stream);
                 });
-				
-				
 
                 // Set up error handling
                 peer.on('error', error => {
@@ -165,19 +171,20 @@
         function changeSize() {
             var width = document.getElementById("widthInput").value;
             var height = document.getElementById("heightInput").value;
-			
+			var distance = document.getElementById("distanceInput").value;
 
             var element = document.getElementById("changeable-element");
             element.style.width = width + "px";
             element.style.height = height + "px";
 
-            var widthProgress = (width / 100 )  ; //   Adjust based on max width
-            var heightProgress = (height / 100 ) ; // Adjust based on max height
+            var widthProgress = (width / 100 )  ;       //   Adjust based on max width
+            var heightProgress = (height / 100 ) ;      //   Adjust based on max height
+			var distanceProgress = (distance / 100 ) ;  //   Adjust based on max distance
 
             document.getElementById("widthProgress").style.width = widthProgress + "%";
             document.getElementById("heightProgress").style.width = heightProgress + "%";
 			
-			connection.send(widthProgress+","+heightProgress);
+			connection.send(widthProgress+","+heightProgress+","+distanceProgress);
         }
     </script>
 	
@@ -191,8 +198,13 @@
         heightInput.addEventListener("input", () => {
             changeSize();
         });
+		
+		const distanceInput = document.getElementById("distanceInput");
+        distanceInput.addEventListener("input", () => {
+            changeSize();
+        });
 
-        changeSize(); // Initialize element size and progress bars
+        changeSize();
     </script>
 	
 	
@@ -200,4 +212,3 @@
     
 </body>
 </html>
-

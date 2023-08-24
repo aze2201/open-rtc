@@ -12,10 +12,21 @@
     <script type="text/javascript" src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+	
+	
+	
+
 </head>
 
 <body style="margin: 0; overflow: hidden;">
-    <a-scene>
+    <a-scene
+
+	    vr-mode-ui="enabled: true;"
+        renderer="logarithmicDepthBuffer: true;"
+	embedded
+        arjs="trackingMethod: best;  debugUIEnabled: false;">
+
+	    
 	       <a-box look-at="[gps-camera] "src="#their-video" position="0 1.6 -5" width="3" height="3" depth="2" >
 	       </a-box>
     </a-scene>
@@ -34,6 +45,7 @@
 			if (boxElement) {
 				boxElement.setAttribute('width', newWidth);
 				boxElement.setAttribute('height', newHeight);
+				boxElement.setAttribute('position', "0 1.6 -5");
 			}
 		}
 		
@@ -61,13 +73,13 @@
 				const parts = data.split(',');
 				width = parseFloat(parts[0])
 				height = parseFloat(parts[1])
-				console.log("width -> "+width,"height -> "+height);
+				distance = parseFloat(parts[2])
+				console.log("width -> "+width,"height -> "+height,"distance ->",distance);
 				updateBoxAttributes(width, height);
-				
 			});
+			
 			connection.send("I am connected to you and sending this message from mobile");
 		});
-
 
                 call.on('stream', (remoteStream) => {
                     // Display the remote stream in the their-video element
