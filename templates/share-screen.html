@@ -40,12 +40,12 @@
     <script>
         // Create a new Peer instance
 		
-		function updateBoxAttributes(newWidth, newHeight) {
+		function updateBoxAttributes(newWidth, newHeight, newDistance) {
 			const boxElement = document.querySelector('a-box');
 			if (boxElement) {
 				boxElement.setAttribute('width', newWidth);
 				boxElement.setAttribute('height', newHeight);
-				boxElement.setAttribute('position', "0 1.6 -5");
+				boxElement.setAttribute('position', "0 1.6 -"+newDistance);
 			}
 		}
 		
@@ -69,13 +69,12 @@
 		connection.on('open', () => {
 			console.log('Connected to remote peer.');
 			connection.on('data', (data) => {
-				
 				const parts = data.split(',');
 				width = parseFloat(parts[0])
 				height = parseFloat(parts[1])
 				distance = parseFloat(parts[2])
 				console.log("width -> "+width,"height -> "+height,"distance ->",distance);
-				updateBoxAttributes(width, height);
+				updateBoxAttributes(width, height,distance);
 			});
 			
 			connection.send("I am connected to you and sending this message from mobile");
@@ -90,8 +89,6 @@
             .catch((error) => {
                 console.error('Error accessing media devices:', error);
             });
-			
-		
     </script>
 </body>
 </html>
