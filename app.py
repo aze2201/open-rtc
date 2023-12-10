@@ -21,6 +21,10 @@ def scan_qr():
 def page(peer_id):
     return render_template('share-screen.html', PeerDesktopID=peer_id)
 
+@app.route('/connect-displayV/<string:peer_id>')
+def pageV(peer_id):
+    return render_template('share-screenV.html', PeerDesktopID=peer_id)
+
 
 @app.route('/ws')
 def socket():

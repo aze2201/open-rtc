@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Multiple Iframes</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    h2 {
+      margin: 20px 0;
+    }
+
+    iframe {
+      width: 80%; /* Adjust iframe width as needed */
+      height: 60vh; /* Adjust iframe height as needed */
+      border: none; /* Remove iframe border */
+      margin: 10px 0; /* Add some margin between iframes */
+    }
+
+    @media screen and (orientation: portrait) {
+      /* Adjust styles for portrait orientation if needed */
+    }
+
+    @media screen and (orientation: landscape) {
+      /* Adjust styles for landscape orientation if needed */
+    }
+  </style>
+</head>
+<body>
+  <h2>Two Iframes Loading the Same Page</h2>
+
+  <iframe src="https://open-rtc.com/connect-display/3ef0492e-9936-4b29-810e-36a5bcfa4100"></iframe>
+  <iframe src="https://open-rtc.com/connect-displayV/3ef0492e-9936-4b29-810e-36a5bcfa4100"></iframe>
+</body>
+</html>
+
