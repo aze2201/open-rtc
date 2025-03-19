@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -14,57 +13,75 @@
       align-items: center;
       flex-direction: column;
     }
-
     h2 {
       margin: 20px 0;
     }
-
     iframe {
       width: 80%; /* Adjust iframe width as needed */
       height: 60vh; /* Adjust iframe height as needed */
       border: none; /* Remove iframe border */
       margin: 10px 0; /* Add some margin between iframes */
     }
-
-    @media screen and (orientation: portrait) {
-      /* Adjust styles for portrait orientation if needed */
-    }
-
-    @media screen and (orientation: landscape) {
-      /* Adjust styles for landscape orientation if needed */
-    }
   </style>
-
   <script>
-    // https://open-rtc.com/viar.html?PeerDesktopID=6087bfd9-f052-4dcc-8ef1-32da8a1c11c6
-        function getParameterByName(name, url) {
-            if (!url) url = window.location.href;
-            name = name.replace(/[\[\]]/g, "\\$&");
-            var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-                results = regex.exec(url);
-            if (!results) return null;
-            if (!results[2]) return '';
-            return decodeURIComponent(results[2].replace(/\+/g, ' '));
-        }
+    // Utility: Retrieve URL parameters
+    function getParameterByName(name, url) {
+      if (!url) url = window.location.href;
+      name = name.replace(/[\[\]]/g, "\\$&");
+      var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+          results = regex.exec(url);
+      if (!results) return null;
+      if (!results[2]) return '';
+      return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            // Get PeerDesktopID from URL
-            const remotePeerId = getParameterByName('PeerDesktopID');
+    // Append PeerDesktopID to iframe src if not already present
+    function appendPeerDesktopId(iframe, remotePeerId) {
+      const currentSrc = iframe.getAttribute('src');
+      const newSrc = currentSrc + (currentSrc.indexOf('?') !== -1 ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
+      iframe.setAttribute('src', newSrc);
+    }
 
-            // Update iframe src with remotePeerId
-            if (remotePeerId) {
-                const iframe = document.getElementById('myIframe');
-                const currentSrc = iframe.getAttribute('src');
-                const newSrc = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
-                iframe.setAttribute('src', newSrc);
-                const iframeV = document.getElementById('myIframeV');
-                const currentSrcV = iframeV.getAttribute('src');
-                const newSrcV = currentSrcV + (currentSrcV.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
-                iframeV.setAttribute('src', newSrcV);
-            }
+    // Object to hold references to iframes when loaded
+    const iframeRefs = {};
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const remotePeerId = getParameterByName('PeerDesktopID');
+      if (remotePeerId) {
+        // Get iframe elements
+        const iframe1 = document.getElementById('myIframe');
+        const iframe2 = document.getElementById('myIframeV');
+
+        // Append the PeerDesktopID parameter
+        appendPeerDesktopId(iframe1, remotePeerId);
+        appendPeerDesktopId(iframe2, remotePeerId);
+
+        // Wait for both iframes to load before storing references
+        iframe1.addEventListener("load", function() {
+          iframeRefs.iframe1 = iframe1.contentWindow;
+          console.log("Iframe 1 loaded:", iframe1.src);
         });
-    </script>
+        iframe2.addEventListener("load", function() {
+          iframeRefs.iframe2 = iframe2.contentWindow;
+          console.log("Iframe 2 loaded:", iframe2.src);
+        });
+      }
 
+      // Relay any incoming message with type "resize" to both iframes
+      window.addEventListener("message", function(event) {
+        // Optionally, add validation for event.origin if needed.
+        if (event.data && event.data.type === "resize") {
+          console.log("Parent received resize message:", event.data);
+          if (iframeRefs.iframe1) {
+            iframeRefs.iframe1.postMessage(event.data, "*");
+          }
+          if (iframeRefs.iframe2) {
+            iframeRefs.iframe2.postMessage(event.data, "*");
+          }
+        }
+      }, false);
+    });
+  </script>
 </head>
 <body>
   <h2>Two Iframes Loading the Same Page</h2>
