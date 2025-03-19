@@ -22,7 +22,7 @@
     }
   </style>
   <script>
-    // Utility to get URL parameters
+    // Utility: Get URL parameters
     function getParameterByName(name, url) {
       if (!url) url = window.location.href;
       name = name.replace(/[\[\]]/g, "\\$&");
@@ -33,6 +33,7 @@
       return decodeURIComponent(results[2].replace(/\+/g, ' '));
     }
 
+    // On DOM loaded, update iframe src URLs with PeerDesktopID
     document.addEventListener("DOMContentLoaded", function() {
       const remotePeerId = getParameterByName('PeerDesktopID');
       if (remotePeerId) {
@@ -46,14 +47,17 @@
         const newSrcV = currentSrcV + (currentSrcV.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
         iframeV.setAttribute('src', newSrcV);
       }
+      
+      // Optionally, send an initial resize message to both iframes (adjust values as needed)
+      const initResize = { type: "resize", width: 3, height: 3, distance: 5 };
+      document.getElementById('myIframe').contentWindow.postMessage(initResize, "*");
+      document.getElementById('myIframeV').contentWindow.postMessage(initResize, "*");
     });
 
-    // Listen for resize messages from either child frame (or from WebRTC)
+    // Relay any incoming resize message to both iframes
     window.addEventListener("message", function(event) {
-      // Expecting a message with { type: "resize", width: <number>, height: <number>, distance: <number> }
       if (event.data && event.data.type === "resize") {
         console.log("Parent received resize message:", event.data);
-        // Relay the message to both iframes
         document.getElementById('myIframe').contentWindow.postMessage(event.data, "*");
         document.getElementById('myIframeV').contentWindow.postMessage(event.data, "*");
       }
