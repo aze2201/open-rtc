@@ -30,7 +30,7 @@
 
   <script>
     // Utility: Get URL parameter by name
-    function getParameterByName(name, url) {
+    function getParameterByNameV(name, url) {
       if (!url) url = window.location.href;
       name = name.replace(/[\[\]]/g, "\\$&");
       var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
@@ -41,26 +41,26 @@
     }
 
     // Update the a-box attributes dynamically
-    function updateBoxAttributes(newWidth, newHeight, newDistance) {
+    function updateBoxAttributesV(newWidthV, newHeightV, newDistanceV) {
       const boxElementV = document.querySelector('#boxV');
       if (boxElementV) {
-        boxElementV.setAttribute('width', newWidth);
-        boxElementV.setAttribute('height', newHeight);
-        boxElementV.setAttribute('position', "0 1.6 -" + newDistance);
+        boxElementV.setAttribute('width', newWidthV);
+        boxElementV.setAttribute('height', newHeightV);
+        boxElementV.setAttribute('position', "0 1.6 -" + newDistanceV);
       } else {
         console.error("Box element not found.");
       }
     }
 
     // Initialize PeerJS
-    const peer = new Peer();
+    const peerV = new Peer();
 
-    peer.on('open', (peerId) => {
+    peerV.on('open', (peerId) => {
       console.log('My peer ID is: ' + peerId);
     });
 
     // Retrieve remote peer ID from URL
-    const remotePeerId = getParameterByName('PeerDesktopID');
+    const remotePeerId = getParameterByNameV('PeerDesktopID');
     if (!remotePeerId) {
       console.error('Remote peer ID not provided in URL parameters.');
     }
@@ -78,24 +78,24 @@
         });
 
         // Initiate a call to the remote peer
-        const callV = peer.call(remotePeerId, stream);
+        const callV = peerV.call(remotePeerId, stream);
         if (!callV) {
           console.error("Call could not be initiated.");
         }
 
         // Connect for data exchange
-        const connectionV = peer.connect(remotePeerId);
+        const connectionV = peerV.connect(remotePeerId);
         connectionV.on('open', () => {
-          console.log('Connected to remote peer.');
+          console.log('Connected to remote peerV.');
           connectionV.on('data', (data) => {
             // Expecting data as "width,height,distance"
-            const parts = data.split(',');
-            if (parts.length === 3) {
-              const width = parseFloat(parts[0]);
-              const height = parseFloat(parts[1]);
-              const distance = parseFloat(parts[2]);
+            const partsV = data.split(',');
+            if (partsV.length === 3) {
+              const widthV = parseFloat(parts[0]);
+              const heightV = parseFloat(parts[1]);
+              const distanceV = parseFloat(parts[2]);
               console.log("Width:", width, "Height:", height, "Distance:", distance);
-              updateBoxAttributes(width, height, distance);
+              updateBoxAttributesV(width, height, distance);
             } else {
               console.warn("Unexpected data format received:", data);
             }
