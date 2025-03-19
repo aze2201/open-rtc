@@ -35,35 +35,47 @@
   </style>
 
   <script>
-    // https://open-rtc.com/viar.html?PeerDesktopID=6087bfd9-f052-4dcc-8ef1-32da8a1c11c6
-        function getParameterByName(name, url) {
-            if (!url) url = window.location.href;
-            name = name.replace(/[\[\]]/g, "\\$&");
-            var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-                results = regex.exec(url);
-            if (!results) return null;
-            if (!results[2]) return '';
-            return decodeURIComponent(results[2].replace(/\+/g, ' '));
-        }
+    // Utility to get URL parameters
+    function getParameterByName(name, url) {
+      if (!url) url = window.location.href;
+      name = name.replace(/[\[\]]/g, "\\$&");
+      var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+          results = regex.exec(url);
+      if (!results) return null;
+      if (!results[2]) return '';
+      return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            // Get PeerDesktopID from URL
-            const remotePeerId = getParameterByName('PeerDesktopID');
+    // Once DOM is loaded, propagate the PeerDesktopID parameter to both iframes.
+    document.addEventListener("DOMContentLoaded", function() {
+      const remotePeerId = getParameterByName('PeerDesktopID');
+      if (remotePeerId) {
+        // Update first iframe's src URL
+        const iframe = document.getElementById('myIframe');
+        const currentSrc = iframe.getAttribute('src');
+        const newSrc = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
+        iframe.setAttribute('src', newSrc);
 
-            // Update iframe src with remotePeerId
-            if (remotePeerId) {
-                const iframe = document.getElementById('myIframe');
-                const currentSrc = iframe.getAttribute('src');
-                const newSrc = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
-                iframe.setAttribute('src', newSrc);
-                const iframeV = document.getElementById('myIframeV');
-                const currentSrcV = iframeV.getAttribute('src');
-                const newSrcV = currentSrcV + (currentSrcV.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
-                iframeV.setAttribute('src', newSrcV);
-            }
-        });
-    </script>
+        // Update second iframe's src URL
+        const iframeV = document.getElementById('myIframeV');
+        const currentSrcV = iframeV.getAttribute('src');
+        const newSrcV = currentSrcV + (currentSrcV.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
+        iframeV.setAttribute('src', newSrcV);
+      }
+    });
 
+    // Listen for messages (e.g., resize messages) coming from either child frame or a WebRTC connection
+    window.addEventListener("message", function(event) {
+      // Expecting a message object with a structure like:
+      // { type: "resize", width: <number>, height: <number>, distance: <number> }
+      if (event.data && event.data.type === "resize") {
+        console.log("Received resize message:", event.data);
+        // Relay the resize message to both iframes
+        document.getElementById('myIframe').contentWindow.postMessage(event.data, "*");
+        document.getElementById('myIframeV').contentWindow.postMessage(event.data, "*");
+      }
+    });
+  </script>
 </head>
 <body>
   <h2>Two Iframes Loading the Same Page</h2>
