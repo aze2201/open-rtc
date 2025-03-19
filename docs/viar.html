@@ -13,16 +13,29 @@
       align-items: center;
       flex-direction: column;
     }
-    h2 { margin: 20px 0; }
+
+    h2 {
+      margin: 20px 0;
+    }
+
     iframe {
-      width: 80%;
-      height: 60vh;
-      border: none;
-      margin: 10px 0;
+      width: 80%; /* Adjust iframe width as needed */
+      height: 60vh; /* Adjust iframe height as needed */
+      border: none; /* Remove iframe border */
+      margin: 10px 0; /* Add some margin between iframes */
+    }
+
+    @media screen and (orientation: portrait) {
+      /* Adjust styles for portrait orientation if needed */
+    }
+
+    @media screen and (orientation: landscape) {
+      /* Adjust styles for landscape orientation if needed */
     }
   </style>
+
   <script>
-    // Utility: Get URL parameters
+    // Utility to get URL parameters
     function getParameterByName(name, url) {
       if (!url) url = window.location.href;
       name = name.replace(/[\[\]]/g, "\\$&");
@@ -33,31 +46,31 @@
       return decodeURIComponent(results[2].replace(/\+/g, ' '));
     }
 
-    // On DOM loaded, update iframe src URLs with PeerDesktopID
+    // Once DOM is loaded, propagate the PeerDesktopID parameter to both iframes.
     document.addEventListener("DOMContentLoaded", function() {
       const remotePeerId = getParameterByName('PeerDesktopID');
       if (remotePeerId) {
+        // Update first iframe's src URL
         const iframe = document.getElementById('myIframe');
         const currentSrc = iframe.getAttribute('src');
         const newSrc = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
         iframe.setAttribute('src', newSrc);
 
+        // Update second iframe's src URL
         const iframeV = document.getElementById('myIframeV');
         const currentSrcV = iframeV.getAttribute('src');
         const newSrcV = currentSrcV + (currentSrcV.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
         iframeV.setAttribute('src', newSrcV);
       }
-      
-      // Optionally, send an initial resize message to both iframes (adjust values as needed)
-      const initResize = { type: "resize", width: 3, height: 3, distance: 5 };
-      document.getElementById('myIframe').contentWindow.postMessage(initResize, "*");
-      document.getElementById('myIframeV').contentWindow.postMessage(initResize, "*");
     });
 
-    // Relay any incoming resize message to both iframes
+    // Listen for messages (e.g., resize messages) coming from either child frame or a WebRTC connection
     window.addEventListener("message", function(event) {
+      // Expecting a message object with a structure like:
+      // { type: "resize", width: <number>, height: <number>, distance: <number> }
       if (event.data && event.data.type === "resize") {
-        console.log("Parent received resize message:", event.data);
+        console.log("Received resize message:", event.data);
+        // Relay the resize message to both iframes
         document.getElementById('myIframe').contentWindow.postMessage(event.data, "*");
         document.getElementById('myIframeV').contentWindow.postMessage(event.data, "*");
       }
