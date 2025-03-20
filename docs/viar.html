@@ -1,44 +1,46 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AR Video Conferencing</title>
+  <title>AR Video Portal</title>
   <style>
-    body, html { margin: 0; padding: 0; width: 100%; height: 100%; display: flex; flex-direction: column; }
-    iframe { width: 100%; height: 50%; border: none; flex: 1; }
+    body { margin: 0; padding: 0; }
+    .iframe-container { display: flex; height: 100vh; }
+    iframe { flex: 1; border: none; }
   </style>
+</head>
+<body>
+  <div class="iframe-container">
+    <iframe id="frame1"></iframe>
+    <iframe id="frame2"></iframe>
+  </div>
+
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const peerDesktopId = urlParams.get('PeerDesktopID');
-
-      const iframe1 = document.getElementById('iframe1');
-      const iframe2 = document.getElementById('iframe2');
-
-      function loadIframe(iframe, src) {
-        if (!peerDesktopId) {
-          console.error('Missing PeerDesktopID');
-          return;
-        }
+    (function() {
+      const PEER_ID = new URLSearchParams(window.location.search).get('PeerDesktopID');
+      
+      function configureIframe(iframe, src) {
         const url = new URL(src, window.location.href);
-        url.searchParams.set('PeerDesktopID', peerDesktopId);
+        url.searchParams.set('PeerDesktopID', PEER_ID);
         iframe.src = url.toString();
       }
 
-      loadIframe(iframe1, 'share-screen.html');
-      loadIframe(iframe2, 'share-screenV.html');
+      window.addEventListener('DOMContentLoaded', () => {
+        if (!PEER_ID) {
+          console.error('Missing PeerDesktopID parameter');
+          return;
+        }
+        
+        configureIframe(document.getElementById('frame1'), 'share-screen.html');
+        configureIframe(document.getElementById('frame2'), 'share-screenV.html');
+      });
 
-      window.addEventListener('message', (event) => {
-        if (event.data?.type === 'resize') {
-          [iframe1, iframe2].forEach(iframe => {
-            iframe.contentWindow.postMessage(event.data, '*');
-          });
+      // Error handling bridge
+      window.addEventListener('message', (e) => {
+        if (e.data.type === 'error') {
+          console.error(`Iframe Error [${e.origin}]:`, e.data.message);
         }
       });
-    });
+    })();
   </script>
-</head>
-<body>
-  <iframe id="iframe1"></iframe>
-  <iframe id="iframe2"></iframe>
 </body>
 </html>
