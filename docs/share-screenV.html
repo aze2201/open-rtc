@@ -87,9 +87,9 @@
         const connectionV = peerV.connect(remotePeerId);
         connectionV.on('open', () => {
           console.log('Connected to remote peerV.');
-          connectionV.on('data', (dataV) => {
+          connectionV.on('data', (data) => {
             // Expecting data as "width,height,distance"
-            const partsV = dataV.split(',');
+            const partsV = data.split(',');
             if (partsV.length === 3) {
               const widthV = parseFloat(partsV[0]);
               const heightV = parseFloat(partsV[1]);
@@ -97,7 +97,7 @@
               console.log("Width:", widthV, "Height:", heightV, "Distance:", distanceV);
               updateBoxAttributesV(widthV, heightV, distanceV);
             } else {
-              console.warn("Unexpected data format received:", dataV);
+              console.warn("Unexpected data format received:", data);
             }
           });
           // Send a test message once connected
