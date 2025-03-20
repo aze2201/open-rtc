@@ -4,7 +4,6 @@
   <title>PeerJS - Video Chat Example</title>
   <link rel="stylesheet" href="style.css">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- Library includes -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
   <script src="https://api.callstats.io/static/callstats.min.js"></script>
@@ -15,7 +14,6 @@
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
-  <!-- A-Frame Scene with AR -->
   <a-scene id="myScene" vr-mode-ui="enabled: true;"
            renderer="logarithmicDepthBuffer: true;"
            embedded
@@ -23,101 +21,64 @@
     <a-box id="box" look-at="[gps-camera]" src="#their-video" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
   </a-scene>
 
-  <!-- Video area -->
   <div class="pure-u-2-3" id="video-container">
     <video id="their-video" width="2" height="2" autoplay playsinline muted></video>
   </div>
 
   <script>
-    // Function to update box attributes dynamically
-    function updateBoxAttributes(newWidth, newHeight, newDistance) {
-      const boxElement = document.querySelector('#box');
-      if (boxElement) {
-        boxElement.setAttribute('width', newWidth);
-        boxElement.setAttribute('height', newHeight);
-        boxElement.setAttribute('position', "0 1.6 -" + newDistance);
-      } else {
-        console.error("Box element not found.");
-      }
-    }
-
-    // Initialize PeerJS
-    const peer = new Peer();
-
-    peer.on('open', (peerId) => {
-      console.log('My peer ID is: ' + peerId);
-    });
-
-    // Function to extract URL parameters
-    function getParameterByName(name, url) {
-      if (!url) url = window.location.href;
-      name = name.replace(/[\[\]]/g, "\\$&");
-      var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-          results = regex.exec(url);
-      if (!results) return null;
-      if (!results[2]) return '';
-      return decodeURIComponent(results[2].replace(/\+/g, ' '));
-    }
-
-    // Retrieve remote peer ID from URL parameter
-    const remotePeerId = getParameterByName('PeerDesktopID');
-    console.log('Remote Peer ID:', remotePeerId);
-    if (!remotePeerId) {
-      console.error("Remote Peer ID is not provided in the URL parameters.");
-    }
-
-    const theirVideo = document.getElementById('their-video');
-
-    // Request access to media devices
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then((stream) => {
-        // Display local stream for preview
-        theirVideo.srcObject = stream;
-        theirVideo.addEventListener('loadedmetadata', () => {
-          theirVideo.play().catch(e => console.error("Error playing local stream:", e));
-        });
-
-        // Initiate a call to the remote peer
-        const call = peer.call(remotePeerId, stream);
-        if (!call) {
-          console.error("Call could not be initiated.");
+    (function() { // Encapsulate in IIFE to prevent global scope pollution
+      function updateBoxAttributes(newWidth, newHeight, newDistance) {
+        const boxElement = document.querySelector('#box');
+        if (boxElement) {
+          boxElement.setAttribute('width', newWidth);
+          boxElement.setAttribute('height', newHeight);
+          boxElement.setAttribute('position', `0 1.6 -${newDistance}`);
         }
+      }
 
-        // Set up data connection for sending configuration
-        const connection = peer.connect(remotePeerId);
-        connection.on('open', () => {
-          console.log('Connected to remote peer.');
-          connection.on('data', (data) => {
-            const parts = data.split(',');
-            if (parts.length === 3) {
-              const width = parseFloat(parts[0]);
-              const height = parseFloat(parts[1]);
-              const distance = parseFloat(parts[2]);
-              console.log("Width:", width, "Height:", height, "Distance:", distance);
-              updateBoxAttributes(width, height, distance);
-            } else {
-              console.warn("Unexpected data format received:", data);
-            }
-          });
-          connection.send("I am connected to you and sending this message from mobile");
-        });
+      const peer = new Peer();
 
-        // Handle remote stream
-        call.on('stream', (remoteStream) => {
-          theirVideo.srcObject = remoteStream;
-          theirVideo.addEventListener('loadedmetadata', () => {
-            theirVideo.play().catch(e => console.error("Error playing remote stream:", e));
-          });
-        });
-
-        // Handle call errors
-        call.on('error', (err) => {
-          console.error("Call error:", err);
-        });
-      })
-      .catch((error) => {
-        console.error('Error accessing media devices:', error);
+      peer.on('open', (peerId) => {
+        console.log('My peer ID is:', peerId);
       });
+
+      function getParameterByName(name) {
+        const url = new URL(window.location.href);
+        return url.searchParams.get(name);
+      }
+
+      const remotePeerId = getParameterByName('PeerDesktopID');
+      if (!remotePeerId) console.error("Remote Peer ID missing");
+
+      const theirVideo = document.getElementById('their-video');
+
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then((stream) => {
+          theirVideo.srcObject = stream;
+          theirVideo.play().catch(console.error);
+
+          const call = peer.call(remotePeerId, stream);
+          if (!call) console.error("Call failed");
+
+          const conn = peer.connect(remotePeerId);
+          conn.on('open', () => {
+            conn.on('data', (data) => {
+              const [width, height, distance] = data.split(',').map(Number);
+              if (width && height && distance) {
+                updateBoxAttributes(width, height, distance);
+              }
+            });
+          });
+
+          call.on('stream', (remoteStream) => {
+            theirVideo.srcObject = remoteStream;
+            theirVideo.play().catch(console.error);
+          });
+
+          call.on('error', console.error);
+        })
+        .catch(console.error);
+    })();
   </script>
 </body>
 </html>
