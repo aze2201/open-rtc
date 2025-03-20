@@ -91,9 +91,9 @@
             // Expecting data as "width,height,distance"
             const partsV = data.split(',');
             if (partsV.length === 3) {
-              const widthV = parseFloat(parts[0]);
-              const heightV = parseFloat(parts[1]);
-              const distanceV = parseFloat(parts[2]);
+              const widthV = parseFloat(partsV[0]);
+              const heightV = parseFloat(partsV[1]);
+              const distanceV = parseFloat(partsV[2]);
               console.log("Width:", widthV, "Height:", heightV, "Distance:", distanceV);
               updateBoxAttributesV(widthV, heightV, distanceV);
             } else {
