@@ -1,115 +1,125 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AR Video Frame 2</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PeerJS - Video Chat Example</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!-- Include libraries -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <script src="https://api.callstats.io/static/callstats.min.js"></script>
+  <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsSHA/1.5.0/sha.js"></script>
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
-  <a-scene 
-    id="scene2"
-    vr-mode-ui="enabled: false"
-    arjs="sourceType: webcam; debugUIEnabled: false;"
-    renderer="logarithmicDepthBuffer: true;"
-  >
-    <a-box
-      id="secondaryBox"
-      position="0 1.6 -5"
-      width="3"
-      height="3"
-      depth="0.1"
-      material="side: double; src: #videoSourceV; transparent: true"
-      look-at="[camera]"
-    ></a-box>
-    <a-camera gps-camera rotation-reader></a-camera>
+  <!-- A-Frame Scene with AR -->
+  <a-scene id="mySceneV" vr-mode-ui="enabled: true;"
+           renderer="logarithmicDepthBuffer: true;"
+           embedded
+           arjs="trackingMethod: best; debugUIEnabled: false;">
+    <a-box id="boxV" look-at="[gps-camera]" src="#their-videoV" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
   </a-scene>
 
-  <video id="videoSourceV" autoplay playsinline muted style="display: none;"></video>
+  <!-- Video element for the remote stream -->
+  <div class="pure-u-2-3" id="video-containerV">
+    <video id="their-videoV" width="2" height="2" autoplay playsinline muted></video>
+  </div>
 
   <script>
-    (function() {
-      // Unique namespace for second frame
-      const APP_V = {
-        peer: null,
-        conn: null,
-        call: null,
-        
-        init: function() {
-          this.createPeer();
-          this.setupVideo();
-          this.setupEventListeners();
-        },
-        
-        createPeer: function() {
-          this.peer = new Peer({
-            config: {'iceServers': [{urls: 'stun:stun.l.google.com:19302'}]}
-          });
-          
-          this.peer.on('open', id => {
-            console.log('Frame2 Peer ID:', id);
-            this.connectToRemote();
-          });
-        },
-        
-        setupVideo: function() {
-          this.videoElement = document.getElementById('videoSourceV');
-          this.boxElement = document.getElementById('secondaryBox');
-        },
-        
-        connectToRemote: function() {
-          const params = new URLSearchParams(window.location.search);
-          const remoteId = params.get('PeerDesktopID');
-          
-          this.conn = this.peer.connect(remoteId);
-          this.conn.on('open', () => {
-            this.conn.on('data', data => this.handleData(data));
-            this.initiateCall(remoteId);
-          });
-        },
-        
-        initiateCall: function(remoteId) {
-          navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then(stream => {
-              this.videoElement.srcObject = stream;
-              this.call = this.peer.call(remoteId, stream);
-              this.setupCallHandlers();
-            })
-            .catch(console.error);
-        },
-        
-        setupCallHandlers: function() {
-          this.call.on('stream', remoteStream => {
-            this.videoElement.srcObject = remoteStream;
-            this.updateVideoTexture();
-          });
-          
-          this.call.on('error', console.error);
-        },
-        
-        handleData: function(data) {
-          const [width, height, distance] = data.split(',').map(Number);
-          if (!isNaN(width) && !isNaN(height) && !isNaN(distance)) {
-            this.updateBoxDimensions(width, height, distance);
-          }
-        },
-        
-        updateBoxDimensions: function(w, h, d) {
-          this.boxElement.setAttribute('width', w);
-          this.boxElement.setAttribute('height', h);
-          this.boxElement.setAttribute('position', `0 1.6 -${d}`);
-          this.updateVideoTexture();
-        },
-        
-        updateVideoTexture: function() {
-          this.boxElement.setAttribute('material', 'src', '#videoSourceV');
-          this.boxElement.emit('componentchanged');
-        }
-      };
+    // Utility: Get URL parameter by name
+    function getParameterByNameV(name, url) {
+      if (!url) url = window.location.href;
+      name = name.replace(/[\[\]]/g, "\\$&");
+      var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+          results = regex.exec(url);
+      if (!results) return null;
+      if (!results[2]) return '';
+      return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
 
-      APP_V.init();
-    })();
+    // Update the a-box attributes dynamically
+    function updateBoxAttributesV(newWidthV, newHeightV, newDistanceV) {
+      const boxElementV = document.querySelector('#boxV');
+      if (boxElementV) {
+        boxElementV.setAttribute('width', newWidthV);
+        boxElementV.setAttribute('height', newHeightV);
+        boxElementV.setAttribute('position', "0 1.6 -" + newDistanceV);
+      } else {
+        console.error("Box element not found.");
+      }
+    }
+
+    // Initialize PeerJS
+    const peerV = new Peer();
+
+    peerV.on('open', (peerId) => {
+      console.log('My peer ID is: ' + peerId);
+    });
+
+    // Retrieve remote peer ID from URL
+    const remotePeerId = getParameterByNameV('PeerDesktopID');
+    if (!remotePeerId) {
+      console.error('Remote peer ID not provided in URL parameters.');
+    }
+
+    // Get video element reference
+    const theirVideoV = document.getElementById('their-videoV');
+
+    // Request access to media devices (camera & microphone)
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        // Set up local video stream
+        theirVideoV.srcObject = stream;
+        theirVideoV.addEventListener('loadedmetadata', () => {
+          theirVideoV.play().catch(err => console.error("Error playing local stream:", err));
+        });
+
+        // Initiate a call to the remote peer
+        const callV = peerV.call(remotePeerId, stream);
+        if (!callV) {
+          console.error("Call could not be initiated.");
+        }
+
+        // Connect for data exchange
+        const connectionV = peerV.connect(remotePeerId);
+        connectionV.on('open', () => {
+          console.log('Connected to remote peerV.');
+          connectionV.on('data', (dataV) => {
+            // Expecting data as "width,height,distance"
+            const partsV = dataV.split(',');
+            if (partsV.length === 3) {
+              const widthV = parseFloat(partsV[0]);
+              const heightV = parseFloat(partsV[1]);
+              const distanceV = parseFloat(partsV[2]);
+              console.log("Width:", widthV, "Height:", heightV, "Distance:", distanceV);
+              updateBoxAttributesV(widthV, heightV, distanceV);
+            } else {
+              console.warn("Unexpected data format received:", dataV);
+            }
+          });
+          // Send a test message once connected
+          connectionV.send("I am connected from mobile.");
+        });
+
+        // When receiving the remote stream, update the video element
+        callV.on('stream', (remoteStream) => {
+          theirVideoV.srcObject = remoteStream;
+          theirVideoV.addEventListener('loadedmetadata', () => {
+            theirVideoV.play().catch(err => console.error("Error playing remote stream:", err));
+          });
+        });
+
+        // Handle call errors
+        callV.on('error', (err) => {
+          console.error("Call error:", err);
+        });
+      })
+      .catch((error) => {
+        console.error('Error accessing media devices:', error);
+      });
   </script>
 </body>
 </html>

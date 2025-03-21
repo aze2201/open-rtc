@@ -1,115 +1,123 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AR Video Frame 1</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PeerJS - Video Chat Example</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!-- Library includes -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <script src="https://api.callstats.io/static/callstats.min.js"></script>
+  <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsSHA/1.5.0/sha.js"></script>
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 </head>
 <body style="margin: 0; overflow: hidden;">
-  <a-scene 
-    id="scene1"
-    vr-mode-ui="enabled: false"
-    arjs="sourceType: webcam; debugUIEnabled: false;"
-    renderer="logarithmicDepthBuffer: true;"
-  >
-    <a-box
-      id="mainBox"
-      position="0 1.6 -5"
-      width="3"
-      height="3"
-      depth="0.1"
-      material="side: double; src: #videoSource; transparent: true"
-      look-at="[camera]"
-    ></a-box>
-    <a-camera gps-camera rotation-reader></a-camera>
+  <!-- A-Frame Scene with AR -->
+  <a-scene id="myScene" vr-mode-ui="enabled: true;"
+           renderer="logarithmicDepthBuffer: true;"
+           embedded
+           arjs="trackingMethod: best; debugUIEnabled: false;">
+    <a-box id="box" look-at="[gps-camera]" src="#their-video" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
   </a-scene>
 
-  <video id="videoSource" autoplay playsinline muted style="display: none;"></video>
+  <!-- Video area -->
+  <div class="pure-u-2-3" id="video-container">
+    <video id="their-video" width="2" height="2" autoplay playsinline muted></video>
+  </div>
 
   <script>
-    (function() {
-      // Unique namespace for this frame
-      const APP = {
-        peer: null,
-        conn: null,
-        call: null,
-        
-        init: function() {
-          this.createPeer();
-          this.setupVideo();
-          this.setupEventListeners();
-        },
-        
-        createPeer: function() {
-          this.peer = new Peer({
-            config: {'iceServers': [{urls: 'stun:stun.l.google.com:19302'}]}
-          });
-          
-          this.peer.on('open', id => {
-            console.log('Frame1 Peer ID:', id);
-            this.connectToRemote();
-          });
-        },
-        
-        setupVideo: function() {
-          this.videoElement = document.getElementById('videoSource');
-          this.boxElement = document.getElementById('mainBox');
-        },
-        
-        connectToRemote: function() {
-          const params = new URLSearchParams(window.location.search);
-          const remoteId = params.get('PeerDesktopID');
-          
-          this.conn = this.peer.connect(remoteId);
-          this.conn.on('open', () => {
-            this.conn.on('data', data => this.handleData(data));
-            this.initiateCall(remoteId);
-          });
-        },
-        
-        initiateCall: function(remoteId) {
-          navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then(stream => {
-              this.videoElement.srcObject = stream;
-              this.call = this.peer.call(remoteId, stream);
-              this.setupCallHandlers();
-            })
-            .catch(console.error);
-        },
-        
-        setupCallHandlers: function() {
-          this.call.on('stream', remoteStream => {
-            this.videoElement.srcObject = remoteStream;
-            this.updateVideoTexture();
-          });
-          
-          this.call.on('error', console.error);
-        },
-        
-        handleData: function(data) {
-          const [width, height, distance] = data.split(',').map(Number);
-          if (!isNaN(width) && !isNaN(height) && !isNaN(distance)) {
-            this.updateBoxDimensions(width, height, distance);
-          }
-        },
-        
-        updateBoxDimensions: function(w, h, d) {
-          this.boxElement.setAttribute('width', w);
-          this.boxElement.setAttribute('height', h);
-          this.boxElement.setAttribute('position', `0 1.6 -${d}`);
-          this.updateVideoTexture();
-        },
-        
-        updateVideoTexture: function() {
-          this.boxElement.setAttribute('material', 'src', '#videoSource');
-          this.boxElement.emit('componentchanged');
-        }
-      };
+    // Function to update box attributes dynamically
+    function updateBoxAttributes(newWidth, newHeight, newDistance) {
+      const boxElement = document.querySelector('#box');
+      if (boxElement) {
+        boxElement.setAttribute('width', newWidth);
+        boxElement.setAttribute('height', newHeight);
+        boxElement.setAttribute('position', "0 1.6 -" + newDistance);
+      } else {
+        console.error("Box element not found.");
+      }
+    }
 
-      APP.init();
-    })();
+    // Initialize PeerJS
+    const peer = new Peer();
+
+    peer.on('open', (peerId) => {
+      console.log('My peer ID is: ' + peerId);
+    });
+
+    // Function to extract URL parameters
+    function getParameterByName(name, url) {
+      if (!url) url = window.location.href;
+      name = name.replace(/[\[\]]/g, "\\$&");
+      var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+          results = regex.exec(url);
+      if (!results) return null;
+      if (!results[2]) return '';
+      return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
+
+    // Retrieve remote peer ID from URL parameter
+    const remotePeerId = getParameterByName('PeerDesktopID');
+    console.log('Remote Peer ID:', remotePeerId);
+    if (!remotePeerId) {
+      console.error("Remote Peer ID is not provided in the URL parameters.");
+    }
+
+    const theirVideo = document.getElementById('their-video');
+
+    // Request access to media devices
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then((stream) => {
+        // Display local stream for preview
+        theirVideo.srcObject = stream;
+        theirVideo.addEventListener('loadedmetadata', () => {
+          theirVideo.play().catch(e => console.error("Error playing local stream:", e));
+        });
+
+        // Initiate a call to the remote peer
+        const call = peer.call(remotePeerId, stream);
+        if (!call) {
+          console.error("Call could not be initiated.");
+        }
+
+        // Set up data connection for sending configuration
+        const connection = peer.connect(remotePeerId);
+        connection.on('open', () => {
+          console.log('Connected to remote peer.');
+          connection.on('data', (data) => {
+            const parts = data.split(',');
+            if (parts.length === 3) {
+              const width = parseFloat(parts[0]);
+              const height = parseFloat(parts[1]);
+              const distance = parseFloat(parts[2]);
+              console.log("Width:", width, "Height:", height, "Distance:", distance);
+              updateBoxAttributes(width, height, distance);
+            } else {
+              console.warn("Unexpected data format received:", data);
+            }
+          });
+          connection.send("I am connected to you and sending this message from mobile");
+        });
+
+        // Handle remote stream
+        call.on('stream', (remoteStream) => {
+          theirVideo.srcObject = remoteStream;
+          theirVideo.addEventListener('loadedmetadata', () => {
+            theirVideo.play().catch(e => console.error("Error playing remote stream:", e));
+          });
+        });
+
+        // Handle call errors
+        call.on('error', (err) => {
+          console.error("Call error:", err);
+        });
+      })
+      .catch((error) => {
+        console.error('Error accessing media devices:', error);
+      });
   </script>
 </body>
 </html>

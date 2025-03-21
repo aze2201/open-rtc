@@ -1,46 +1,91 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AR Video Portal</title>
+  <title>Multiple Iframes</title>
   <style>
-    body { margin: 0; padding: 0; }
-    .iframe-container { display: flex; height: 100vh; }
-    iframe { flex: 1; border: none; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    h2 {
+      margin: 20px 0;
+    }
+    iframe {
+      width: 80%; /* Adjust iframe width as needed */
+      height: 60vh; /* Adjust iframe height as needed */
+      border: none; /* Remove iframe border */
+      margin: 10px 0; /* Add some margin between iframes */
+    }
   </style>
-</head>
-<body>
-  <div class="iframe-container">
-    <iframe id="frame1"></iframe>
-    <iframe id="frame2"></iframe>
-  </div>
-
   <script>
-    (function() {
-      const PEER_ID = new URLSearchParams(window.location.search).get('PeerDesktopID');
-      
-      function configureIframe(iframe, src) {
-        const url = new URL(src, window.location.href);
-        url.searchParams.set('PeerDesktopID', PEER_ID);
-        iframe.src = url.toString();
+    // Utility: Retrieve URL parameters
+    function getParameterByName(name, url) {
+      if (!url) url = window.location.href;
+      name = name.replace(/[\[\]]/g, "\\$&");
+      var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+          results = regex.exec(url);
+      if (!results) return null;
+      if (!results[2]) return '';
+      return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    }
+
+    // Append PeerDesktopID to iframe src if not already present
+    function appendPeerDesktopId(iframe, remotePeerId) {
+      const currentSrc = iframe.getAttribute('src');
+      const newSrc = currentSrc + (currentSrc.indexOf('?') !== -1 ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
+      iframe.setAttribute('src', newSrc);
+    }
+
+    // Object to hold references to iframes when loaded
+    const iframeRefs = {};
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const remotePeerId = getParameterByName('PeerDesktopID');
+      if (remotePeerId) {
+        // Get iframe elements
+        const iframe1 = document.getElementById('myIframe');
+        const iframe2 = document.getElementById('myIframeV');
+
+        // Append the PeerDesktopID parameter
+        appendPeerDesktopId(iframe1, remotePeerId);
+        appendPeerDesktopId(iframe2, remotePeerId);
+
+        // Wait for both iframes to load before storing references
+        iframe1.addEventListener("load", function() {
+          iframeRefs.iframe1 = iframe1.contentWindow;
+          console.log("Iframe 1 loaded:", iframe1.src);
+        });
+        iframe2.addEventListener("load", function() {
+          iframeRefs.iframe2 = iframe2.contentWindow;
+          console.log("Iframe 2 loaded:", iframe2.src);
+        });
       }
 
-      window.addEventListener('DOMContentLoaded', () => {
-        if (!PEER_ID) {
-          console.error('Missing PeerDesktopID parameter');
-          return;
+      // Relay any incoming message with type "resize" to both iframes
+      window.addEventListener("message", function(event) {
+        // Optionally, add validation for event.origin if needed.
+        if (event.data && event.data.type === "resize") {
+          console.log("Parent received resize message:", event.data);
+          if (iframeRefs.iframe1) {
+            iframeRefs.iframe1.postMessage(event.data, "*");
+          }
+          if (iframeRefs.iframe2) {
+            iframeRefs.iframe2.postMessage(event.data, "*");
+          }
         }
-        
-        configureIframe(document.getElementById('frame1'), 'share-screen.html');
-        configureIframe(document.getElementById('frame2'), 'share-screenV.html');
-      });
-
-      // Error handling bridge
-      window.addEventListener('message', (e) => {
-        if (e.data.type === 'error') {
-          console.error(`Iframe Error [${e.origin}]:`, e.data.message);
-        }
-      });
-    })();
+      }, false);
+    });
   </script>
+</head>
+<body>
+  <h2>Two Iframes Loading the Same Page</h2>
+  <iframe id="myIframe" src="https://aze2201.github.io/open-rtc/share-screen.html"></iframe>
+  <iframe id="myIframeV" src="https://aze2201.github.io/open-rtc/share-screenV.html"></iframe>
 </body>
 </html>
