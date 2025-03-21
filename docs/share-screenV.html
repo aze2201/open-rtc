@@ -60,8 +60,8 @@
     });
 
     // Retrieve remote peer ID from URL
-    const remotePeerId = getParameterByNameV('PeerDesktopID');
-    if (!remotePeerId) {
+    const remotePeerIdV = getParameterByNameV('PeerDesktopID');
+    if (!remotePeerIdV) {
       console.error('Remote peer ID not provided in URL parameters.');
     }
 
@@ -78,13 +78,13 @@
         });
 
         // Initiate a call to the remote peer
-        const callV = peerV.call(remotePeerId, stream);
+        const callV = peerV.call(remotePeerIdV, stream);
         if (!callV) {
           console.error("Call could not be initiated.");
         }
 
         // Connect for data exchange
-        const connectionV = peerV.connect(remotePeerId);
+        const connectionV = peerV.connect(remotePeerIdV);
         connectionV.on('open', () => {
           console.log('Connected to remote peerV.');
           connectionV.on('data', (data) => {
