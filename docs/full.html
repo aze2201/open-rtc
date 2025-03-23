@@ -55,22 +55,20 @@
     <!-- Screen copy 1 -->
     <div class="screen" id="screen1">
       <a-scene id="sceneV1" vr-mode-ui="enabled: true;" embedded arjs="trackingMethod: best; debugUIEnabled: false;">
-        <!-- WebRTC box (uses the hidden video as texture) -->
+        <!-- AR box uses the hidden video as texture -->
         <a-box id="boxV1" look-at="[gps-camera]" src="#their-videoV1" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
       </a-scene>
       <div class="video-container" id="video-containerV1">
-        <!-- Video element (visible for debugging or background/local video) -->
         <video id="their-videoV1" width="320" height="240" autoplay playsinline muted></video>
       </div>
     </div>
     <!-- Screen copy 2 -->
     <div class="screen" id="screen2">
       <a-scene id="sceneV2" vr-mode-ui="enabled: true;" embedded arjs="trackingMethod: best; debugUIEnabled: false;">
-        <!-- WebRTC box -->
+        <!-- AR box uses the hidden video as texture -->
         <a-box id="boxV2" look-at="[gps-camera]" src="#their-videoV2" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
       </a-scene>
       <div class="video-container" id="video-containerV2">
-        <!-- Video element -->
         <video id="their-videoV2" width="320" height="240" autoplay playsinline muted></video>
       </div>
     </div>
@@ -88,8 +86,16 @@
       return decodeURIComponent(results[2].replace(/\+/g, ' '));
     }
 
-    // Update both AR boxes (on both screens) with new attributes
+    // Store latest received values
+    let latestWidth, latestHeight, latestDistance;
+
+    // Update both AR boxes (on both screens) with new attributes.
     function updateBoxAttributesV(newWidth, newHeight, newDistance) {
+      // Save latest values so we can update later if needed.
+      latestWidth = newWidth;
+      latestHeight = newHeight;
+      latestDistance = newDistance;
+      
       const box1 = document.getElementById('boxV1');
       const box2 = document.getElementById('boxV2');
       if (box1) {
@@ -107,6 +113,18 @@
         console.error("BoxV2 element not found.");
       }
     }
+
+    // When each scene is loaded, reapply the latest size values if available.
+    document.getElementById('sceneV1').addEventListener('loaded', function () {
+      if (latestWidth !== undefined) {
+        updateBoxAttributesV(latestWidth, latestHeight, latestDistance);
+      }
+    });
+    document.getElementById('sceneV2').addEventListener('loaded', function () {
+      if (latestWidth !== undefined) {
+        updateBoxAttributesV(latestWidth, latestHeight, latestDistance);
+      }
+    });
 
     // Initialize PeerJS
     const peerV = new Peer();
