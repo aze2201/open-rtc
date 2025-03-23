@@ -14,11 +14,18 @@
   <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
   <style>
-    /* Simple style to display video elements side-by-side */
+    /* Ensure the video container uses the full viewport width and centers the videos */
     .video-container {
       display: flex;
-      justify-content: space-around;
-      margin-top: 10px;
+      justify-content: center;
+      gap: 10px;
+      width: 100vw;
+      box-sizing: border-box;
+      padding: 10px;
+    }
+    video {
+      /* Width will be updated dynamically via JS */
+      height: auto;
     }
   </style>
 </head>
@@ -37,9 +44,9 @@
   <!-- Video elements container -->
   <div class="video-container" id="video-containerV">
     <!-- First video element -->
-    <video id="their-videoV" width="320" height="240" autoplay playsinline muted></video>
+    <video id="their-videoV" autoplay playsinline muted></video>
     <!-- Second video element -->
-    <video id="their-videoV2" width="320" height="240" autoplay playsinline muted></video>
+    <video id="their-videoV2" autoplay playsinline muted></video>
   </div>
 
   <script>
@@ -54,17 +61,41 @@
       return decodeURIComponent(results[2].replace(/\+/g, ' '));
     }
 
-    // Update the a-box attributes dynamically (for the first box)
+    // Update both AR boxes' attributes based on new width, height, and distance values.
     function updateBoxAttributesV(newWidthV, newHeightV, newDistanceV) {
-      const boxElementV = document.querySelector('#boxV');
-      if (boxElementV) {
-        boxElementV.setAttribute('width', newWidthV);
-        boxElementV.setAttribute('height', newHeightV);
-        boxElementV.setAttribute('position', "0 1.6 -" + newDistanceV);
+      // Update first box
+      const boxV = document.getElementById('boxV');
+      if (boxV) {
+        boxV.setAttribute('width', newWidthV);
+        boxV.setAttribute('height', newHeightV);
+        boxV.setAttribute('position', `-2 1.6 -${newDistanceV}`);
       } else {
-        console.error("Box element not found.");
+        console.error("BoxV element not found.");
+      }
+      // Update second box
+      const boxV2 = document.getElementById('boxV2');
+      if (boxV2) {
+        boxV2.setAttribute('width', newWidthV);
+        boxV2.setAttribute('height', newHeightV);
+        boxV2.setAttribute('position', `2 1.6 -${newDistanceV}`);
+      } else {
+        console.error("BoxV2 element not found.");
       }
     }
+
+    // Adjust video elements to each take half the window width.
+    function adjustVideoSizes() {
+      const videoContainer = document.getElementById('video-containerV');
+      if (videoContainer) {
+        const videos = videoContainer.getElementsByTagName('video');
+        const newWidth = Math.floor(window.innerWidth / videos.length) - 20; // account for gap/padding
+        for (let video of videos) {
+          video.width = newWidth;
+        }
+      }
+    }
+    window.addEventListener('resize', adjustVideoSizes);
+    adjustVideoSizes();
 
     // Initialize PeerJS
     const peerV = new Peer();
@@ -90,11 +121,10 @@
         theirVideoV.srcObject = stream;
         theirVideoV2.srcObject = stream;
         
-        // Play first video stream
+        // Play the local video streams once metadata is loaded
         theirVideoV.addEventListener('loadedmetadata', () => {
           theirVideoV.play().catch(err => console.error("Error playing local stream on video 1:", err));
         });
-        // Play second video stream
         theirVideoV2.addEventListener('loadedmetadata', () => {
           theirVideoV2.play().catch(err => console.error("Error playing local stream on video 2:", err));
         });
@@ -118,7 +148,6 @@
               const distanceV = parseFloat(partsV[2]);
               console.log("Width:", widthV, "Height:", heightV, "Distance:", distanceV);
               updateBoxAttributesV(widthV, heightV, distanceV);
-              // You could similarly update the second box if needed.
             } else {
               console.warn("Unexpected data format received:", data);
             }
