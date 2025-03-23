@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PeerJS - Video Chat Example</title>
-  <link rel="stylesheet" href="style.css">
+  <title>PeerJS - VR Mode Duplicated Video Chat</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <!-- Include libraries -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
@@ -14,39 +13,52 @@
   <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
   <style>
-    /* Ensure the video container uses the full viewport width and centers the videos */
-    .video-container {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      width: 100vw;
-      box-sizing: border-box;
-      padding: 10px;
+    html, body {
+      margin: 0;
+      overflow: hidden;
+      height: 100%;
     }
-    video {
-      /* Width will be updated dynamically via JS */
-      height: auto;
+    #screens {
+      display: flex;
+      flex-direction: row;
+      width: 100vw;
+      height: 100vh;
+    }
+    .screen {
+      width: 50%;
+      height: 100%;
+      position: relative;
+    }
+    /* Hide the video elements used as textures */
+    .hidden-video {
+      display: none;
+    }
+    /* Ensure each A-Frame scene fills its container */
+    a-scene {
+      width: 100%;
+      height: 100%;
     }
   </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
-  <!-- A-Frame Scene with AR and two boxes -->
-  <a-scene id="mySceneV" vr-mode-ui="enabled: true;"
-           renderer="logarithmicDepthBuffer: true;"
-           embedded
-           arjs="trackingMethod: best; debugUIEnabled: false;">
-    <!-- First AR box using the first video element as texture -->
-    <a-box id="boxV" look-at="[gps-camera]" src="#their-videoV" position="-2 1.6 -5" width="3" height="3" depth="2"></a-box>
-    <!-- Second AR box using the second video element as texture -->
-    <a-box id="boxV2" look-at="[gps-camera]" src="#their-videoV2" position="2 1.6 -5" width="3" height="3" depth="2"></a-box>
-  </a-scene>
-
-  <!-- Video elements container -->
-  <div class="video-container" id="video-containerV">
-    <!-- First video element -->
-    <video id="their-videoV" autoplay playsinline muted></video>
-    <!-- Second video element -->
-    <video id="their-videoV2" autoplay playsinline muted></video>
+<body>
+  <!-- Two horizontally duplicated screens -->
+  <div id="screens">
+    <div class="screen">
+      <!-- A-Frame Scene for screen 1 -->
+      <a-scene id="scene1" vr-mode-ui="enabled: true;" embedded arjs="trackingMethod: best; debugUIEnabled: false;">
+        <a-box id="box1" look-at="[gps-camera]" src="#video1" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
+      </a-scene>
+      <!-- Hidden video element for screen 1 (used as texture) -->
+      <video id="video1" class="hidden-video" autoplay playsinline muted></video>
+    </div>
+    <div class="screen">
+      <!-- A-Frame Scene for screen 2 -->
+      <a-scene id="scene2" vr-mode-ui="enabled: true;" embedded arjs="trackingMethod: best; debugUIEnabled: false;">
+        <a-box id="box2" look-at="[gps-camera]" src="#video2" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
+      </a-scene>
+      <!-- Hidden video element for screen 2 (used as texture) -->
+      <video id="video2" class="hidden-video" autoplay playsinline muted></video>
+    </div>
   </div>
 
   <script>
@@ -61,72 +73,49 @@
       return decodeURIComponent(results[2].replace(/\+/g, ' '));
     }
 
-    // Update both AR boxes' attributes based on new width, height, and distance values.
-    function updateBoxAttributesV(newWidthV, newHeightV, newDistanceV) {
-      // Update first box
-      const boxV = document.getElementById('boxV');
-      if (boxV) {
-        boxV.setAttribute('width', newWidthV);
-        boxV.setAttribute('height', newHeightV);
-        boxV.setAttribute('position', `-2 1.6 -${newDistanceV}`);
-      } else {
-        console.error("BoxV element not found.");
+    // Update both AR boxes' attributes dynamically
+    function updateBoxAttributesV(newWidth, newHeight, newDistance) {
+      const box1 = document.getElementById('box1');
+      const box2 = document.getElementById('box2');
+      if (box1) {
+        box1.setAttribute('width', newWidth);
+        box1.setAttribute('height', newHeight);
+        box1.setAttribute('position', `0 1.6 -${newDistance}`);
       }
-      // Update second box
-      const boxV2 = document.getElementById('boxV2');
-      if (boxV2) {
-        boxV2.setAttribute('width', newWidthV);
-        boxV2.setAttribute('height', newHeightV);
-        boxV2.setAttribute('position', `2 1.6 -${newDistanceV}`);
-      } else {
-        console.error("BoxV2 element not found.");
+      if (box2) {
+        box2.setAttribute('width', newWidth);
+        box2.setAttribute('height', newHeight);
+        box2.setAttribute('position', `0 1.6 -${newDistance}`);
       }
     }
-
-    // Adjust video elements to each take half the window width.
-    function adjustVideoSizes() {
-      const videoContainer = document.getElementById('video-containerV');
-      if (videoContainer) {
-        const videos = videoContainer.getElementsByTagName('video');
-        const newWidth = Math.floor(window.innerWidth / videos.length) - 20; // account for gap/padding
-        for (let video of videos) {
-          video.width = newWidth;
-        }
-      }
-    }
-    window.addEventListener('resize', adjustVideoSizes);
-    adjustVideoSizes();
 
     // Initialize PeerJS
     const peerV = new Peer();
-
     peerV.on('open', (peerId) => {
       console.log('My peer ID is: ' + peerId);
     });
 
-    // Retrieve remote peer ID from URL
+    // Retrieve remote peer ID from URL parameter
     const remotePeerIdV = getParameterByNameV('PeerDesktopID');
     if (!remotePeerIdV) {
       console.error('Remote peer ID not provided in URL parameters.');
     }
 
-    // Get video element references
-    const theirVideoV = document.getElementById('their-videoV');
-    const theirVideoV2 = document.getElementById('their-videoV2');
+    // Get video element references (for texture) from both screens
+    const video1 = document.getElementById('video1');
+    const video2 = document.getElementById('video2');
 
     // Request access to media devices (camera & microphone)
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((stream) => {
-        // Set up local video streams for both video elements
-        theirVideoV.srcObject = stream;
-        theirVideoV2.srcObject = stream;
-        
-        // Play the local video streams once metadata is loaded
-        theirVideoV.addEventListener('loadedmetadata', () => {
-          theirVideoV.play().catch(err => console.error("Error playing local stream on video 1:", err));
+        // Use local stream initially for both video elements
+        video1.srcObject = stream;
+        video2.srcObject = stream;
+        video1.addEventListener('loadedmetadata', () => {
+          video1.play().catch(err => console.error("Error playing local stream on video1:", err));
         });
-        theirVideoV2.addEventListener('loadedmetadata', () => {
-          theirVideoV2.play().catch(err => console.error("Error playing local stream on video 2:", err));
+        video2.addEventListener('loadedmetadata', () => {
+          video2.play().catch(err => console.error("Error playing local stream on video2:", err));
         });
 
         // Initiate a call to the remote peer
@@ -138,16 +127,16 @@
         // Connect for data exchange
         const connectionV = peerV.connect(remotePeerIdV);
         connectionV.on('open', () => {
-          console.log('Connected to remote peerV.');
+          console.log('Connected to remote peer.');
           connectionV.on('data', (data) => {
             // Expecting data as "width,height,distance"
-            const partsV = data.split(',');
-            if (partsV.length === 3) {
-              const widthV = parseFloat(partsV[0]);
-              const heightV = parseFloat(partsV[1]);
-              const distanceV = parseFloat(partsV[2]);
-              console.log("Width:", widthV, "Height:", heightV, "Distance:", distanceV);
-              updateBoxAttributesV(widthV, heightV, distanceV);
+            const parts = data.split(',');
+            if (parts.length === 3) {
+              const width = parseFloat(parts[0]);
+              const height = parseFloat(parts[1]);
+              const distance = parseFloat(parts[2]);
+              console.log("Width:", width, "Height:", height, "Distance:", distance);
+              updateBoxAttributesV(width, height, distance);
             } else {
               console.warn("Unexpected data format received:", data);
             }
@@ -158,13 +147,13 @@
 
         // When receiving the remote stream, update both video elements
         callV.on('stream', (remoteStream) => {
-          theirVideoV.srcObject = remoteStream;
-          theirVideoV2.srcObject = remoteStream;
-          theirVideoV.addEventListener('loadedmetadata', () => {
-            theirVideoV.play().catch(err => console.error("Error playing remote stream on video 1:", err));
+          video1.srcObject = remoteStream;
+          video2.srcObject = remoteStream;
+          video1.addEventListener('loadedmetadata', () => {
+            video1.play().catch(err => console.error("Error playing remote stream on video1:", err));
           });
-          theirVideoV2.addEventListener('loadedmetadata', () => {
-            theirVideoV2.play().catch(err => console.error("Error playing remote stream on video 2:", err));
+          video2.addEventListener('loadedmetadata', () => {
+            video2.play().catch(err => console.error("Error playing remote stream on video2:", err));
           });
         });
 
