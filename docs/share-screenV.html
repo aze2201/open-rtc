@@ -1,84 +1,113 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>VR WebRTC AR</title>
-    <style>
-        /* VR split-screen layout */
-        .vr-container {
-            display: flex;
-            width: 100vw;
-            height: 100vh;
-        }
-        .eye-view {
-            flex: 1;
-            overflow: hidden;
-        }
-        /* Print styling */
-        @media print {
-            .vr-container { flex-direction: column; }
-            .eye-view { height: 50vh !important; }
-        }
-    </style>
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <title>VR WebRTC AR</title>
+  <style>
+    /* VR split-screen styling */
+    .vr-container {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    .eye-view {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+    .video-background {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+    /* Print styling */
+    @media print {
+      .vr-container { flex-direction: column; }
+      .eye-view { height: 50vh !important; }
+    }
+  </style>
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div class="vr-container">
-        <!-- Left Eye View -->
-        <div class="eye-view">
-            <a-scene embedded>
-                <a-box id="left-box" position="0 1.6 -5" width="3" height="3"></a-box>
-                <a-camera position="-0.1 1.6 0"></a-camera>
-            </a-scene>
-        </div>
-
-        <!-- Right Eye View -->
-        <div class="eye-view">
-            <a-scene embedded>
-                <a-box id="right-box" position="0 1.6 -5" width="3" height="3"></a-box>
-                <a-camera position="0.1 1.6 0"></a-camera>
-            </a-scene>
-        </div>
+  <div class="vr-container">
+    <!-- Left Eye -->
+    <div class="eye-view">
+      <video class="video-background" id="left-video" autoplay playsinline muted></video>
+      <a-scene embedded>
+        <a-box id="left-box" position="0 1.6 -5" width="3" height="3"></a-box>
+        <a-camera position="-0.1 1.6 0"></a-camera>
+        <a-sky color="#ECECEC"></a-sky>
+      </a-scene>
     </div>
 
-    <script>
-        // Initialize PeerJS connection
-        const peer = new Peer();
-        let connection;
+    <!-- Right Eye -->
+    <div class="eye-view">
+      <video class="video-background" id="right-video" autoplay playsinline muted></video>
+      <a-scene embedded>
+        <a-box id="right-box" position="0 1.6 -5" width="3" height="3"></a-box>
+        <a-camera position="0.1 1.6 0"></a-camera>
+        <a-sky color="#ECECEC"></a-sky>
+      </a-scene>
+    </div>
+  </div>
 
-        // Update both VR boxes simultaneously
-        function updateBoxSizes(width, height, depth) {
-            document.querySelectorAll('[id$="-box"]').forEach(box => {
-                box.setAttribute('width', width);
-                box.setAttribute('height', height);
-                box.setAttribute('depth', depth);
-                box.setAttribute('position', `0 1.6 -${depth}`);
+  <script>
+    const peer = new Peer();
+    let connection;
+
+    // Update both boxes and video sizes
+    function updateSizes(width, height, depth) {
+      // Update AR boxes
+      ['left-box', 'right-box'].forEach(id => {
+        const box = document.getElementById(id);
+        box.setAttribute('width', width);
+        box.setAttribute('height', height);
+        box.setAttribute('depth', depth/2);
+        box.setAttribute('position', `0 1.6 -${depth}`);
+      });
+
+      // Update video backgrounds
+      document.querySelectorAll('.video-background').forEach(video => {
+        video.style.transform = `scale(${depth/5})`;
+      });
+    }
+
+    peer.on('open', peerId => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const remoteId = urlParams.get('PeerDesktopID');
+
+      if (remoteId) {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+          .then(stream => {
+            // Set local video streams
+            document.getElementById('left-video').srcObject = stream;
+            document.getElementById('right-video').srcObject = stream;
+
+            const call = peer.call(remoteId, stream);
+            connection = peer.connect(remoteId);
+
+            connection.on('data', data => {
+              const [width, height, depth] = data.split(',').map(Number);
+              if (!isNaN(width)) updateSizes(width, height, depth);
             });
-        }
 
-        peer.on('open', peerId => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const remoteId = urlParams.get('PeerDesktopID');
+            call.on('stream', remoteStream => {
+              // Update both video elements with remote stream
+              document.querySelectorAll('.video-background').forEach(video => {
+                video.srcObject = remoteStream;
+              });
 
-            if (remoteId) {
-                navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                    .then(stream => {
-                        const call = peer.call(remoteId, stream);
-                        connection = peer.connect(remoteId);
-
-                        connection.on('data', data => {
-                            const [width, height, depth] = data.split(',').map(Number);
-                            if (!isNaN(width)) updateBoxSizes(width, height, depth);
-                        });
-
-                        call.on('stream', remoteStream => {
-                            document.querySelectorAll('a-box').forEach(box => {
-                                box.setAttribute('material', 'src', URL.createObjectURL(remoteStream));
-                            });
-                        });
-                    });
-            }
-        });
-    </script>
+              // Update box textures
+              document.querySelectorAll('a-box').forEach(box => {
+                box.setAttribute('material', 'src', `#${video.id}`);
+              });
+            });
+          });
+      }
+    });
+  </script>
 </body>
 </html>
