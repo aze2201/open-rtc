@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PeerJS - VR Mode Duplicated Video Chat</title>
+  <title>PeerJS - VR Mode Duplicated Page</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <!-- Include libraries -->
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
@@ -18,6 +18,7 @@
       overflow: hidden;
       height: 100%;
     }
+    /* Outer container with two identical screens side-by-side */
     #screens {
       display: flex;
       flex-direction: row;
@@ -29,35 +30,49 @@
       height: 100%;
       position: relative;
     }
-    /* Hide the video elements used as textures */
-    .hidden-video {
-      display: none;
-    }
-    /* Ensure each A-Frame scene fills its container */
+    /* Each A-Frame scene fills its parent screen */
     a-scene {
       width: 100%;
-      height: 100%;
+      height: calc(100% - 60px); /* Leave room for video container */
+    }
+    /* Video container styling */
+    .video-container {
+      width: 100%;
+      height: 60px;
+      text-align: center;
+      background: #000;
+    }
+    /* Video element styling */
+    video {
+      max-height: 100%;
+      max-width: 100%;
     }
   </style>
 </head>
 <body>
-  <!-- Two horizontally duplicated screens -->
+  <!-- Outer container: two duplicated screens -->
   <div id="screens">
-    <div class="screen">
-      <!-- A-Frame Scene for screen 1 -->
-      <a-scene id="scene1" vr-mode-ui="enabled: true;" embedded arjs="trackingMethod: best; debugUIEnabled: false;">
-        <a-box id="box1" look-at="[gps-camera]" src="#video1" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
+    <!-- Screen copy 1 -->
+    <div class="screen" id="screen1">
+      <a-scene id="sceneV1" vr-mode-ui="enabled: true;" embedded arjs="trackingMethod: best; debugUIEnabled: false;">
+        <!-- WebRTC box (uses the hidden video as texture) -->
+        <a-box id="boxV1" look-at="[gps-camera]" src="#their-videoV1" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
       </a-scene>
-      <!-- Hidden video element for screen 1 (used as texture) -->
-      <video id="video1" class="hidden-video" autoplay playsinline muted></video>
+      <div class="video-container" id="video-containerV1">
+        <!-- Video element (visible for debugging or background/local video) -->
+        <video id="their-videoV1" width="320" height="240" autoplay playsinline muted></video>
+      </div>
     </div>
-    <div class="screen">
-      <!-- A-Frame Scene for screen 2 -->
-      <a-scene id="scene2" vr-mode-ui="enabled: true;" embedded arjs="trackingMethod: best; debugUIEnabled: false;">
-        <a-box id="box2" look-at="[gps-camera]" src="#video2" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
+    <!-- Screen copy 2 -->
+    <div class="screen" id="screen2">
+      <a-scene id="sceneV2" vr-mode-ui="enabled: true;" embedded arjs="trackingMethod: best; debugUIEnabled: false;">
+        <!-- WebRTC box -->
+        <a-box id="boxV2" look-at="[gps-camera]" src="#their-videoV2" position="0 1.6 -5" width="3" height="3" depth="2"></a-box>
       </a-scene>
-      <!-- Hidden video element for screen 2 (used as texture) -->
-      <video id="video2" class="hidden-video" autoplay playsinline muted></video>
+      <div class="video-container" id="video-containerV2">
+        <!-- Video element -->
+        <video id="their-videoV2" width="320" height="240" autoplay playsinline muted></video>
+      </div>
     </div>
   </div>
 
@@ -73,19 +88,23 @@
       return decodeURIComponent(results[2].replace(/\+/g, ' '));
     }
 
-    // Update both AR boxes' attributes dynamically
+    // Update both AR boxes (on both screens) with new attributes
     function updateBoxAttributesV(newWidth, newHeight, newDistance) {
-      const box1 = document.getElementById('box1');
-      const box2 = document.getElementById('box2');
+      const box1 = document.getElementById('boxV1');
+      const box2 = document.getElementById('boxV2');
       if (box1) {
         box1.setAttribute('width', newWidth);
         box1.setAttribute('height', newHeight);
-        box1.setAttribute('position', `0 1.6 -${newDistance}`);
+        box1.setAttribute('position', "0 1.6 -" + newDistance);
+      } else {
+        console.error("BoxV1 element not found.");
       }
       if (box2) {
         box2.setAttribute('width', newWidth);
         box2.setAttribute('height', newHeight);
-        box2.setAttribute('position', `0 1.6 -${newDistance}`);
+        box2.setAttribute('position', "0 1.6 -" + newDistance);
+      } else {
+        console.error("BoxV2 element not found.");
       }
     }
 
@@ -95,30 +114,30 @@
       console.log('My peer ID is: ' + peerId);
     });
 
-    // Retrieve remote peer ID from URL parameter
+    // Retrieve remote peer ID from URL
     const remotePeerIdV = getParameterByNameV('PeerDesktopID');
     if (!remotePeerIdV) {
       console.error('Remote peer ID not provided in URL parameters.');
     }
 
-    // Get video element references (for texture) from both screens
-    const video1 = document.getElementById('video1');
-    const video2 = document.getElementById('video2');
+    // Get video element references from both screens
+    const theirVideoV1 = document.getElementById('their-videoV1');
+    const theirVideoV2 = document.getElementById('their-videoV2');
 
     // Request access to media devices (camera & microphone)
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((stream) => {
         // Use local stream initially for both video elements
-        video1.srcObject = stream;
-        video2.srcObject = stream;
-        video1.addEventListener('loadedmetadata', () => {
-          video1.play().catch(err => console.error("Error playing local stream on video1:", err));
+        theirVideoV1.srcObject = stream;
+        theirVideoV2.srcObject = stream;
+        theirVideoV1.addEventListener('loadedmetadata', () => {
+          theirVideoV1.play().catch(err => console.error("Error playing local stream on videoV1:", err));
         });
-        video2.addEventListener('loadedmetadata', () => {
-          video2.play().catch(err => console.error("Error playing local stream on video2:", err));
+        theirVideoV2.addEventListener('loadedmetadata', () => {
+          theirVideoV2.play().catch(err => console.error("Error playing local stream on videoV2:", err));
         });
 
-        // Initiate a call to the remote peer
+        // Initiate a call to the remote peer using the local stream
         const callV = peerV.call(remotePeerIdV, stream);
         if (!callV) {
           console.error("Call could not be initiated.");
@@ -147,13 +166,13 @@
 
         // When receiving the remote stream, update both video elements
         callV.on('stream', (remoteStream) => {
-          video1.srcObject = remoteStream;
-          video2.srcObject = remoteStream;
-          video1.addEventListener('loadedmetadata', () => {
-            video1.play().catch(err => console.error("Error playing remote stream on video1:", err));
+          theirVideoV1.srcObject = remoteStream;
+          theirVideoV2.srcObject = remoteStream;
+          theirVideoV1.addEventListener('loadedmetadata', () => {
+            theirVideoV1.play().catch(err => console.error("Error playing remote stream on videoV1:", err));
           });
-          video2.addEventListener('loadedmetadata', () => {
-            video2.play().catch(err => console.error("Error playing remote stream on video2:", err));
+          theirVideoV2.addEventListener('loadedmetadata', () => {
+            theirVideoV2.play().catch(err => console.error("Error playing remote stream on videoV2:", err));
           });
         });
 
