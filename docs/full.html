@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>VR WebRTC AR</title>
+    <title>VR WebRTC AR (Duplicated)</title>
     <style>
         /* VR split-screen styling */
         .vr-container {
             display: flex;
-            width: 100vw;
+            width: 200vw; /* Double the width */
             height: 100vh;
             position: relative;
         }
@@ -14,6 +14,7 @@
             flex: 1;
             overflow: hidden;
             position: relative;
+            width: 50vw; /* Each view takes half the viewport width */
         }
         .video-background {
             position: absolute;
@@ -36,7 +37,7 @@
         /* Print styling */
         @media print {
             .vr-container { flex-direction: column; }
-            .eye-view { height: 50vh !important; }
+            .eye-view { height: 50vh !important; width: 100vw; }
         }
     </style>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
@@ -80,44 +81,37 @@
         const remoteVideoLeft = document.getElementById('remoteVideoLeft');
         const localVideoRight = document.getElementById('localVideoRight');
         const remoteVideoRight = document.getElementById('remoteVideoRight');
-        const webrtcContainers = document.querySelectorAll('.webrtc-container');
         const webrtcVideos = document.querySelectorAll('.webrtc-video');
+        const leftBox = document.getElementById('left-box');
+        const rightBox = document.getElementById('right-box');
+        const leftVideoBackground = document.getElementById('left-video');
+        const rightVideoBackground = document.getElementById('right-video');
 
-        // Function to set the video stream to the video elements
         function setVideoStream(element, stream) {
             element.srcObject = stream;
         }
 
-        // Update both boxes and video sizes
         function updateSizes(width, height, depth) {
-            // Update AR boxes
-            ['left-box', 'right-box'].forEach(id => {
-                const box = document.getElementById(id);
-                box.setAttribute('width', width);
-                box.setAttribute('height', height);
-                box.setAttribute('depth', depth/2);
-                box.setAttribute('position', `0 1.6 -${depth}`);
-            });
+            leftBox.setAttribute('width', width);
+            leftBox.setAttribute('height', height);
+            leftBox.setAttribute('depth', depth / 2);
+            leftBox.setAttribute('position', `0 1.6 -${depth}`);
 
-            // Update video backgrounds
-            document.querySelectorAll('.video-background').forEach(video => {
-                video.style.transform = `scale(${depth/5})`;
-            });
+            rightBox.setAttribute('width', width);
+            rightBox.setAttribute('height', height);
+            rightBox.setAttribute('depth', depth / 2);
+            rightBox.setAttribute('position', `0 1.6 -${depth}`);
+
+            leftVideoBackground.style.transform = `scale(${depth / 5})`;
+            rightVideoBackground.style.transform = `scale(${depth / 5})`;
         }
 
-        // Function to update the size of both WebRTC boxes simultaneously
         function updateWebRTCSize(width, height) {
             webrtcVideos.forEach(video => {
                 video.style.width = `${width}px`;
                 video.style.height = `${height}px`;
             });
         }
-
-        // Example of how to trigger a size change (you'd likely link this to some UI element)
-        // For instance, after receiving data or based on user input
-        // setTimeout(() => {
-        //     updateWebRTCSize(480, 360);
-        // }, 5000);
 
         peer.on('open', peerId => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -126,11 +120,10 @@
             navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 .then(stream => {
                     localStream = stream;
-                    // Set local video streams for both eyes
                     setVideoStream(localVideoLeft, stream);
                     setVideoStream(localVideoRight, stream);
-                    document.getElementById('left-video').srcObject = stream;
-                    document.getElementById('right-video').srcObject = stream;
+                    leftVideoBackground.srcObject = stream;
+                    rightVideoBackground.srcObject = stream;
 
                     if (remoteId) {
                         const call = peer.call(remoteId, stream);
@@ -142,14 +135,10 @@
                         });
 
                         call.on('stream', remoteStream => {
-                            // Update both remote video elements
                             setVideoStream(remoteVideoLeft, remoteStream);
                             setVideoStream(remoteVideoRight, remoteStream);
-
-                            // Update box textures (using left video as source for both)
-                            document.querySelectorAll('a-box').forEach(box => {
-                                box.setAttribute('material', 'src', '#left-video');
-                            });
+                            leftBox.setAttribute('material', 'src', '#left-video');
+                            rightBox.setAttribute('material', 'src', '#right-video');
                         });
                     }
                 })
