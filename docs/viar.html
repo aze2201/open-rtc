@@ -1,73 +1,370 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Multiple Iframes</title>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
+    <meta charset="UTF-8">
 
-    h2 {
-      margin: 20px 0;
-    }
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1,
+                   maximum-scale=1, user-scalable=no,
+                   viewport-fit=cover">
 
-    iframe {
-      width: 80%; /* Adjust iframe width as needed */
-      height: 60vh; /* Adjust iframe height as needed */
-      border: none; /* Remove iframe border */
-      margin: 10px 0; /* Add some margin between iframes */
-    }
+    <title>OpenRTC VR Viewer</title>
 
-    @media screen and (orientation: portrait) {
-      /* Adjust styles for portrait orientation if needed */
-    }
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
 
-    @media screen and (orientation: landscape) {
-      /* Adjust styles for landscape orientation if needed */
-    }
-  </style>
-
-  <script>
-    // https://aze2201.github.io/open-rtc/viar.html?PeerDesktopID=6087bfd9-f052-4dcc-8ef1-32da8a1c11c6
-        function getParameterByName(name, url) {
-            if (!url) url = window.location.href;
-            name = name.replace(/[\[\]]/g, "\\$&");
-            var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
-                results = regex.exec(url);
-            if (!results) return null;
-            if (!results[2]) return '';
-            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+    <style>
+        * {
+            box-sizing: border-box;
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            // Get PeerDesktopID from URL
-            const remotePeerId = getParameterByName('PeerDesktopID');
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: black;
+        }
 
-            // Update iframe src with remotePeerId
-            if (remotePeerId) {
-                const iframe = document.getElementById('myIframe');
-                const currentSrc = iframe.getAttribute('src');
-                const newSrc = currentSrc + (currentSrc.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
-                iframe.setAttribute('src', newSrc);
-                const iframeV = document.getElementById('myIframeV');
-                const currentSrcV = iframeV.getAttribute('src');
-                const newSrcV = currentSrcV + (currentSrcV.includes('?') ? '&' : '?') + 'PeerDesktopID=' + remotePeerId;
-                iframeV.setAttribute('src', newSrcV);
-            }
-        });
-    </script>
+        body {
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
 
+        #vr {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
+            background: black;
+        }
+
+        .eye {
+            flex: 1 1 50%;
+            width: 50%;
+            min-width: 0;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: black;
+        }
+
+        .eye:first-child {
+            border-right: 1px solid #333;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+            background: black;
+        }
+
+        #toolbar {
+            position: fixed;
+            top: env(safe-area-inset-top, 8px);
+            right: 8px;
+            z-index: 10;
+        }
+
+        button {
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 10px 14px;
+            background: #333;
+            color: white;
+            font-size: 14px;
+        }
+
+        #status {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 25px;
+            color: white;
+            background: black;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #status.hidden {
+            display: none;
+        }
+    </style>
 </head>
+
 <body>
-  <h2>Two Iframes Loading the Same Page</h2>
-  <iframe id="myIframe" src="https://aze2201.github.io/open-rtc/share-screen.html"></iframe>
-  <iframe id="myIframeV" src="https://aze2201.github.io/open-rtc/share-screenV.html"></iframe>
+
+<div id="vr">
+
+    <div class="eye">
+        <video id="leftEye" autoplay muted playsinline></video>
+    </div>
+
+    <div class="eye">
+        <video id="rightEye" autoplay muted playsinline></video>
+    </div>
+
+</div>
+
+<div id="toolbar">
+    <button id="fullscreenButton">Fullscreen</button>
+</div>
+
+<div id="status">
+    <div id="statusText">Initializing VR viewer...</div>
+    <button id="retryButton" hidden>Retry connection</button>
+</div>
+
+<script>
+"use strict";
+
+const params = new URLSearchParams(window.location.search);
+const remotePeerId = params.get("PeerDesktopID");
+
+const leftEye = document.getElementById("leftEye");
+const rightEye = document.getElementById("rightEye");
+
+const statusBox = document.getElementById("status");
+const statusText = document.getElementById("statusText");
+const retryButton = document.getElementById("retryButton");
+
+let peer = null;
+let mediaCall = null;
+let dataConnection = null;
+let bootstrapStream = null;
+let destroyed = false;
+
+function showStatus(message, canRetry = false) {
+    statusBox.classList.remove("hidden");
+    statusText.textContent = message;
+    retryButton.hidden = !canRetry;
+}
+
+function hideStatus() {
+    statusBox.classList.add("hidden");
+}
+
+function createBootstrapStream() {
+
+    // A tiny generated video stream.
+    // No camera or microphone access is required.
+
+    const canvas = document.createElement("canvas");
+
+    canvas.width = 2;
+    canvas.height = 2;
+
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, 2, 2);
+
+    if (!canvas.captureStream) {
+        throw new Error("Canvas captureStream is not supported.");
+    }
+
+    return canvas.captureStream(1);
+}
+
+async function displayStream(stream) {
+
+    // Same MediaStream object for both lenses.
+    leftEye.srcObject = stream;
+    rightEye.srcObject = stream;
+
+    try {
+
+        await Promise.all([
+            leftEye.play(),
+            rightEye.play()
+        ]);
+
+        hideStatus();
+
+    } catch (error) {
+
+        console.error("Video playback error:", error);
+
+        showStatus("Tap to start video.", true);
+    }
+}
+
+function applySettings(data) {
+
+    const values = String(data).split(",").map(Number);
+
+    if (values.length < 3 || !values.every(Number.isFinite)) {
+        return;
+    }
+
+    const [width, height, distance] = values;
+
+    console.log("Desktop settings:", {
+        width,
+        height,
+        distance
+    });
+
+    // These settings belong to the AR object.
+    // The VR viewer intentionally preserves the same
+    // image size in both eyes.
+}
+
+function stopConnection() {
+
+    if (mediaCall) {
+        mediaCall.close();
+        mediaCall = null;
+    }
+
+    if (dataConnection) {
+        dataConnection.close();
+        dataConnection = null;
+    }
+
+    if (bootstrapStream) {
+        bootstrapStream.getTracks().forEach(track => track.stop());
+        bootstrapStream = null;
+    }
+
+    if (peer && !peer.destroyed) {
+        peer.destroy();
+        peer = null;
+    }
+}
+
+function connect() {
+
+    if (destroyed) return;
+
+    stopConnection();
+
+    if (!remotePeerId) {
+        showStatus("Missing PeerDesktopID in URL.");
+        return;
+    }
+
+    showStatus("Connecting to desktop...");
+
+    try {
+
+        bootstrapStream = createBootstrapStream();
+
+        peer = new Peer(undefined, { debug: 1 });
+
+        peer.on("open", () => {
+
+            console.log("Mobile Peer ID:", peer.id);
+
+            // ONE WebRTC media connection.
+            mediaCall = peer.call(remotePeerId, bootstrapStream);
+
+            if (!mediaCall) {
+                showStatus("Could not create media connection.", true);
+                return;
+            }
+
+            mediaCall.on("stream", remoteStream => {
+
+                console.log("Desktop stream received.");
+
+                displayStream(remoteStream);
+            });
+
+            mediaCall.on("close", () => {
+                showStatus("Desktop disconnected.", true);
+            });
+
+            mediaCall.on("error", error => {
+                console.error("Media call error:", error);
+                showStatus("Media connection failed.", true);
+            });
+
+            // Separate PeerJS data connection for settings.
+            dataConnection = peer.connect(remotePeerId);
+
+            dataConnection.on("open", () => {
+
+                console.log("Settings channel connected.");
+
+                dataConnection.send("VR viewer connected");
+            });
+
+            dataConnection.on("data", applySettings);
+
+            dataConnection.on("error", error => {
+                console.error("Data connection error:", error);
+            });
+
+        });
+
+        peer.on("error", error => {
+
+            console.error("PeerJS error:", error);
+
+            showStatus("Connection error: " + error.type, true);
+        });
+
+        peer.on("disconnected", () => {
+            showStatus("Disconnected from PeerJS server.", true);
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        showStatus("Initialization failed: " + error.message, true);
+    }
+}
+
+retryButton.addEventListener("click", connect);
+
+// Fullscreen and landscape attempt.
+document.getElementById("fullscreenButton")
+    .addEventListener("click", async () => {
+
+        try {
+
+            if (!document.fullscreenElement) {
+                await document.documentElement.requestFullscreen();
+            }
+
+            if (screen.orientation?.lock) {
+                try {
+                    await screen.orientation.lock("landscape");
+                } catch (error) {
+                    console.log("Landscape lock not supported.");
+                }
+            }
+
+        } catch (error) {
+            console.error("Fullscreen error:", error);
+        }
+    });
+
+window.addEventListener("pagehide", () => {
+
+    destroyed = true;
+
+    stopConnection();
+});
+
+// Start automatically.
+connect();
+
+</script>
+
 </body>
 </html>
