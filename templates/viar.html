@@ -1,44 +1,103 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Multiple Iframes</title>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
+    <meta charset="UTF-8">
 
-    h2 {
-      margin: 20px 0;
-    }
+    <meta name="viewport"
+          content="width=device-width,
+                   initial-scale=1,
+                   maximum-scale=1,
+                   user-scalable=no,
+                   viewport-fit=cover">
 
-    iframe {
-      width: 80%; /* Adjust iframe width as needed */
-      height: 60vh; /* Adjust iframe height as needed */
-      border: none; /* Remove iframe border */
-      margin: 10px 0; /* Add some margin between iframes */
-    }
+    <title>VR WebRTC Viewer</title>
 
-    @media screen and (orientation: portrait) {
-      /* Adjust styles for portrait orientation if needed */
-    }
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-    @media screen and (orientation: landscape) {
-      /* Adjust styles for landscape orientation if needed */
-    }
-  </style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .vr-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        .eye {
+            position: relative;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .eye iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+
+            width: 200%;
+            height: 100%;
+
+            border: none;
+            display: block;
+        }
+
+        /* Both eyes display the same source page */
+        .left iframe {
+            left: 0;
+        }
+
+        .right iframe {
+            left: -100%;
+        }
+
+        /* Hide scrollbars */
+        body {
+            scrollbar-width: none;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
 </head>
-<body>
-  <h2>Two Iframes Loading the Same Page</h2>
 
-  <iframe src="https://aze2201.github.io/open-rtc/connect-display/3ef0492e-9936-4b29-810e-36a5bcfa4100"></iframe>
-  <iframe src="https://aze2201.github.io/open-rtc/connect-displayV/3ef0492e-9936-4b29-810e-36a5bcfa4100"></iframe>
+<body>
+
+    <div class="vr-container">
+
+        <!-- LEFT EYE -->
+        <div class="eye left">
+            <iframe
+                src="https://aze2201.github.io/open-rtc/connect-display/3ef0492e-9936-4b29-810e-36a5bcfa4100"
+                allow="camera; microphone; autoplay; fullscreen"
+                allowfullscreen>
+            </iframe>
+        </div>
+
+        <!-- RIGHT EYE -->
+        <div class="eye right">
+            <iframe
+                src="https://aze2201.github.io/open-rtc/connect-display/3ef0492e-9936-4b29-810e-36a5bcfa4100"
+                allow="camera; microphone; autoplay; fullscreen"
+                allowfullscreen>
+            </iframe>
+        </div>
+
+    </div>
+
 </body>
 </html>
-
