@@ -1,214 +1,396 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screen Sharing Sender</title>
+    <title>OpenRTC - Screen Sharing</title>
+
+    <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 50vh;
-            background-color: #f5f5f5;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+            background: #f5f5f5;
+            color: #222;
         }
 
         h1 {
-            font-size: 24px;
-            margin-top: 10px;
+            font-size: 26px;
         }
 
-        video {
-            max-width: 100%;
-            width: 100%;
-            height: auto;
-            margin-top: 10px;
-        }
-
-        #startButton {
-            margin-top: 15px;
-            padding: 20px 30px;
-            font-size: 18px;
-            background-color: #007bff;
+        button {
+            padding: 14px 24px;
+            border: 0;
+            border-radius: 8px;
+            background: #087bdf;
             color: white;
-            border: none;
-            border-radius: 5px;
+            font-size: 17px;
             cursor: pointer;
         }
 
-        #qrcode {
-            margin-top: 20px;
-        }
-		
-		#changeable-element {
-            width: 100px;
-            height: 100px;
-            background-color: lightblue;
-            transition: all 0.3s ease;
+        button:disabled {
+            opacity: 0.6;
+            cursor: default;
         }
 
-        #size-controls {
+        #status {
+            margin: 15px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .qr-section {
+            margin: 25px 0;
+            padding: 18px;
+            background: white;
+            border-radius: 10px;
+        }
+
+        .qr {
             display: flex;
-            align-items: center;
-            margin-bottom: 10px;
+            justify-content: center;
+            margin: 15px auto;
         }
 
-        #size-controls label {
-            margin-right: 10px;
+        .qr canvas,
+        .qr img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .controls {
+            margin: 25px 0;
+            padding: 18px;
+            background: white;
+            border-radius: 10px;
+            text-align: left;
+        }
+
+        .control {
+            margin: 18px 0;
+        }
+
+        .control label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        a {
+            overflow-wrap: anywhere;
+        }
+
+        .muted {
+            color: #666;
+            font-size: 13px;
         }
     </style>
-
-    <!-- Include PeerJS library -->
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.3.2/dist/peerjs.min.js"></script>
-    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
 </head>
+
 <body>
-    <h1>Screen Sharing Sender</h1>
-    <center><h2>This is your display ID. <br>Scan this QR code with your camera and connect to this display</h2></center>
+
+    <h1>OpenRTC Screen Sharing</h1>
+
+    <p>Start screen sharing, then scan the QR code with your mobile device.</p>
+
     <button id="startButton">Start Sharing Display</button>
-    <div id="qrcode"></div>
-	
-	<br>
-	
-	<center><h2>Adjust your Argumented Object<br> This size will effect on your mobile browser interface</h2></center>
-	<div id="changeable-element"></div>
-    <div id="size-controls">
-        <label for="widthInput">Width:</label>
-        <input type="range" id="widthInput" min="100" max="500" value="200" step="1">
-        <div class="progress-bar">
-            <div id="widthProgress" class="progress"></div>
+
+    <div id="status">Initializing PeerJS...</div>
+
+    <section class="qr-section">
+        <h2>AR Mode</h2>
+        <div id="qrAR" class="qr"></div>
+        <a id="linkAR" href="#" target="_blank">AR link</a>
+    </section>
+
+    <section class="qr-section">
+        <h2>VR Mode</h2>
+        <div id="qrVR" class="qr"></div>
+        <a id="linkVR" href="#" target="_blank">VR link</a>
+    </section>
+
+    <section class="controls">
+        <h2>Display Settings</h2>
+
+        <div class="control">
+            <label for="widthInput">
+                <span>Width</span>
+                <strong id="widthValue">200</strong>
+            </label>
+            <input type="range" id="widthInput"
+                   min="100" max="500" value="200">
         </div>
-    </div>
-    <div id="size-controls">
-        <label for="heightInput">Height:</label>
-        <input type="range" id="heightInput" min="100" max="500" value="200" step="1">
-        <div class="progress-bar">
-            <div id="heightProgress" class="progress"></div>
+
+        <div class="control">
+            <label for="heightInput">
+                <span>Height</span>
+                <strong id="heightValue">200</strong>
+            </label>
+            <input type="range" id="heightInput"
+                   min="100" max="500" value="200">
         </div>
-    </div>
-	
-	<div id="size-controls">
-        <label for="distanceInput">Distance:</label>
-        <input type="range" id="distanceInput" min="100" max="500" value="200" step="1">
-        <div class="progress-bar">
-            <div id="distanceProgress" class="progress"></div>
+
+        <div class="control">
+            <label for="distanceInput">
+                <span>Distance</span>
+                <strong id="distanceValue">200</strong>
+            </label>
+            <input type="range" id="distanceInput"
+                   min="100" max="500" value="200">
         </div>
-    </div>
-	
-	
-	<script>
-		// This is communication
-        const startButton = document.getElementById('startButton');
-        const localVideo = document.getElementById('localVideo');
-        let peer = null;
-        let localStream = null;
-        
-        // Initialize PeerJS
-                peer = new Peer();
 
-                // Print sender's PeerID to console
-                peer.on('open', peerId => {
-                    console.log('Sender PeerID:', peerId);
-                    
-                    const qrcodeDiv = document.getElementById('qrcode');
-                    const text = 'https://aze2201.github.io/open-rtc/connect-display/'+peerId;
-                    if (text) {
-                     // Clear existing QR code
-                     qrcodeDiv.innerHTML = '';
-                     // Generate QR code
-                     const qrcode = new QRCode(qrcodeDiv, {
-                              text: text,
-                              width: 256,
-                              height: 256
-                         });
-             qrcodeDiv.style.display = 'block';
-                     }
-                });
-				
-		// This is message exchange to adjust settings				
-		peer.on('connection', (conn) => {
-			connection = conn;
-			connection.on('data', (data) => {
-				console.log(data);
-				connection.send("2,2,2");
-			});
-		});
-                
-                
+        <p class="muted">
+            These settings are sent to connected mobile clients.
+        </p>
+    </section>
 
-        startButton.addEventListener('click', async () => {
-            try {
+<script>
+"use strict";
 
-                // Get user media for screen sharing
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+const startButton = document.getElementById("startButton");
+const statusElement = document.getElementById("status");
 
-                // Display local stream
-                // localVideo.srcObject = stream;
+const widthInput = document.getElementById("widthInput");
+const heightInput = document.getElementById("heightInput");
+const distanceInput = document.getElementById("distanceInput");
 
-                // Call the specified target PeerID
- 
-                // Answer incoming calls automatically
-                peer.on('call', incomingCall => {
-                    incomingCall.answer(stream);
-                });
+let peer = null;
+let screenStream = null;
 
-                // Set up error handling
-                peer.on('error', error => {
-                    console.error('PeerJS error:', error);
-                });
+const pendingCalls = [];
+const dataConnections = new Set();
 
-                startButton.disabled = true;
-            } catch (error) {
-                console.error('Error starting screen sharing:', error);
-            }
+function setStatus(message) {
+    statusElement.textContent = message;
+}
+
+function getSettings() {
+    return {
+        width: Number(widthInput.value),
+        height: Number(heightInput.value),
+        distance: Number(distanceInput.value)
+    };
+}
+
+function sendSettings(connection) {
+    if (!connection || !connection.open) {
+        return;
+    }
+
+    const settings = getSettings();
+
+    connection.send(
+        `${settings.width},${settings.height},${settings.distance}`
+    );
+}
+
+function broadcastSettings() {
+    for (const connection of dataConnections) {
+        sendSettings(connection);
+    }
+}
+
+function updateSettingLabels() {
+    document.getElementById("widthValue").textContent =
+        widthInput.value;
+
+    document.getElementById("heightValue").textContent =
+        heightInput.value;
+
+    document.getElementById("distanceValue").textContent =
+        distanceInput.value;
+
+    broadcastSettings();
+}
+
+function answerCall(call) {
+    if (!screenStream) {
+        pendingCalls.push(call);
+        return;
+    }
+
+    console.log("Answering incoming media call.");
+
+    try {
+        call.answer(screenStream);
+
+        call.on("error", error => {
+            console.error("Media call error:", error);
         });
 
-		// This is display
-        function changeSize() {
-            var width = document.getElementById("widthInput").value;
-            var height = document.getElementById("heightInput").value;
-			var distance = document.getElementById("distanceInput").value;
+        call.on("close", () => {
+            console.log("Mobile media connection closed.");
+        });
+    } catch (error) {
+        console.error("Could not answer media call:", error);
+    }
+}
 
-            var element = document.getElementById("changeable-element");
-            element.style.width = width + "px";
-            element.style.height = height + "px";
+function answerPendingCalls() {
+    while (pendingCalls.length > 0 && screenStream) {
+        const call = pendingCalls.shift();
+        answerCall(call);
+    }
+}
 
-            var widthProgress = (width / 100 )  ;           //   Adjust based on max width
-            var heightProgress = (height / 100 ) ;          //   Adjust based on max height
-			var distanceProgress = (distance / 100 ) * 2 ;  //   Adjust based on max distance
+function createMobileLinks(peerId) {
+    // Resolve URLs relative to this page.
+    // Works with GitHub Pages subdirectories.
 
-            document.getElementById("widthProgress").style.width = widthProgress + "%";
-            document.getElementById("heightProgress").style.width = heightProgress + "%";
-			
-			connection.send(widthProgress+","+heightProgress+","+distanceProgress);
+    const arUrl = new URL("share-screen.html", window.location.href);
+    arUrl.searchParams.set("PeerDesktopID", peerId);
+
+    const vrUrl = new URL("viar.html", window.location.href);
+    vrUrl.searchParams.set("PeerDesktopID", peerId);
+
+    document.getElementById("linkAR").href = arUrl.href;
+    document.getElementById("linkAR").textContent = arUrl.href;
+
+    document.getElementById("linkVR").href = vrUrl.href;
+    document.getElementById("linkVR").textContent = vrUrl.href;
+
+    document.getElementById("qrAR").innerHTML = "";
+    document.getElementById("qrVR").innerHTML = "";
+
+    new QRCode(document.getElementById("qrAR"), {
+        text: arUrl.href,
+        width: 220,
+        height: 220
+    });
+
+    new QRCode(document.getElementById("qrVR"), {
+        text: vrUrl.href,
+        width: 220,
+        height: 220
+    });
+
+    console.log("AR URL:", arUrl.href);
+    console.log("VR URL:", vrUrl.href);
+}
+
+async function startScreenSharing() {
+    if (screenStream) {
+        return;
+    }
+
+    if (!navigator.mediaDevices ||
+        !navigator.mediaDevices.getDisplayMedia) {
+        setStatus("Screen sharing is not supported by this browser.");
+        return;
+    }
+
+    try {
+        // Desktop screen capture only.
+        // No camera or microphone is requested here.
+        screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: false
+        });
+
+        startButton.disabled = true;
+        startButton.textContent = "Sharing Display";
+
+        setStatus("Screen sharing active. Waiting for mobile connection...");
+
+        const videoTrack = screenStream.getVideoTracks()[0];
+
+        if (videoTrack) {
+            videoTrack.addEventListener("ended", () => {
+                screenStream = null;
+                startButton.disabled = false;
+                startButton.textContent = "Start Sharing Display";
+                setStatus("Screen sharing stopped.");
+            });
         }
-    </script>
-	
-	<script>
-        const widthInput = document.getElementById("widthInput");
-        widthInput.addEventListener("input", () => {
-            changeSize();
-        });
 
-        const heightInput = document.getElementById("heightInput");
-        heightInput.addEventListener("input", () => {
-            changeSize();
-        });
-		
-		const distanceInput = document.getElementById("distanceInput");
-        distanceInput.addEventListener("input", () => {
-            changeSize();
-        });
+        answerPendingCalls();
 
-        changeSize();
-    </script>
-	
-	
-    <video id="localVideo" autoplay muted></video>
-    
+    } catch (error) {
+        console.error("Screen sharing error:", error);
+        setStatus("Could not start screen sharing: " + error.message);
+    }
+}
+
+// Initialize PeerJS once.
+peer = new Peer(undefined, {
+    debug: 1
+});
+
+peer.on("open", peerId => {
+    console.log("Desktop Peer ID:", peerId);
+
+    createMobileLinks(peerId);
+
+    setStatus("Ready. Start screen sharing and scan the VR QR code.");
+});
+
+// Register the call handler immediately.
+// This avoids missing calls while the user is starting screen sharing.
+peer.on("call", incomingCall => {
+    console.log("Incoming media call:", incomingCall.peer);
+    answerCall(incomingCall);
+});
+
+// Data channel for display settings.
+peer.on("connection", connection => {
+    console.log("Mobile data connection:", connection.peer);
+
+    dataConnections.add(connection);
+
+    connection.on("open", () => {
+        console.log("Mobile settings channel connected.");
+        sendSettings(connection);
+    });
+
+    connection.on("data", data => {
+        console.log("Mobile message:", data);
+        sendSettings(connection);
+    });
+
+    connection.on("close", () => {
+        dataConnections.delete(connection);
+    });
+
+    connection.on("error", error => {
+        console.error("Data connection error:", error);
+        dataConnections.delete(connection);
+    });
+});
+
+peer.on("disconnected", () => {
+    setStatus("Disconnected from PeerJS server.");
+});
+
+peer.on("error", error => {
+    console.error("PeerJS error:", error);
+    setStatus("PeerJS error: " + error.type);
+});
+
+startButton.addEventListener("click", startScreenSharing);
+
+widthInput.addEventListener("input", updateSettingLabels);
+heightInput.addEventListener("input", updateSettingLabels);
+distanceInput.addEventListener("input", updateSettingLabels);
+
+updateSettingLabels();
+
+</script>
+
 </body>
 </html>
